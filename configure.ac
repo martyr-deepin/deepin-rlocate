@@ -81,7 +81,6 @@ AC_PROG_LN_S
 AC_CONFIG_FILES([Makefile
           src/Makefile
           src/rlocate-daemon/Makefile
-          src/rlocate-module/Makefile
           src/rlocate-scripts/rlocate-checkpoint
           src/rlocate-scripts/Makefile
           doc/Makefile

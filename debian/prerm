@@ -10,4 +10,6 @@ then
         echo "activated:0" > $PROC
 fi
 
+dkms remove -m rlocate -v 0.5.6 --all || true
+
 #DEBHELPER#

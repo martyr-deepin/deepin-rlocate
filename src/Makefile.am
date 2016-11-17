@@ -28,7 +28,7 @@ bin_PROGRAMS = rlocate
 rlocate_SOURCES = pidfile.h pidfile.c slocate.c slocate.h \
 		  rlocate.h rlocate.c cmds.c cmds.h conf.c conf.h utils.c \
 	   	  utils.h
-SUBDIRS = rlocate-daemon rlocate-module rlocate-scripts
+SUBDIRS = rlocate-daemon rlocate-scripts
 EXTRA_DIST = rlocate.cron rlocate-scripts install-cron.sh.in
 
 INSTALL = install -c

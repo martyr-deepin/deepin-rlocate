@@ -34,4 +34,10 @@ properly until you do or until it is run by cron (it is daily).
 EOF
 fi
 
+dkms add -m rlocate -v 0.5.6
+dkms build -m rlocate -v 0.5.6 && dkms install -m rlocate -v 0.5.6 || true
+
+/etc/init.d/rlocate start
+rlocate -u
+
 #DEBHELPER#

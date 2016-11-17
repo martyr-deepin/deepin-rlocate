@@ -1,2 +1,0 @@
-rlocate-source: script-not-executable ./usr/src/modules/rlocate/debian/rlocate-module.postinst
-rlocate-source: arch-independent-package-contains-binary-or-object ./usr/src/modules/rlocate/rlocate-module/rlocate.ko

@@ -189,27 +189,6 @@ binary-modules:
 	dh_testroot
 	dh_clean -k
 	
-	# Build and install the module
-	if [ $(RLOCATE_PATCHLEVEL) = 4 ]; then                          \
-		$(MAKE) only_modules_install KERNEL_SOURCES=$(KSRC)	\
-			DESTDIR=$(CURDIR)/debian/$(pmodules) KVERS=$(KVERS);    \
-	elif [ $(RLOCATE_PATCHLEVEL) = 6 ]; then                        \
-		mv rlocate-module/Makefile rlocate-module/Makefile.automake; \
-		cp rlocate-module/Makefile.kernel rlocate-module/Makefile; \
-		$(MAKE) -C $(KSRC) SUBDIRS=$(CURDIR)/rlocate-module $(KPKG_EXTRAV_ARG)	\
-			INSTALL_MOD_PATH=$(CURDIR)/debian/$(pmodules) modules modules_install;	\
-		mv rlocate-module/Makefile.automake rlocate-module/Makefile; \
-	fi
-
-#	# Build the module
-#	$(MAKE) modules HPATH=$(KSRC)/include
-#
-#	# Install the module
-#	$(MAKE) only_modules_install DESTDIR=$(CURDIR)/debian/$(pmodules) KVERS=$(KVERS)
-	mkdir -p $(CURDIR)/debian/$(pmodules)/usr/share/doc/$(pmodules)
-	sed -e "s%#KERNEL_VERSION#%$(KVERS)%" \
-		debian/$(package)-module.postinst.in >debian/$(package)-module.postinst
-
 	dh_installdebconf
 	dh_installchangelogs ChangeLog
 	dh_installdocs 
@@ -252,8 +231,6 @@ clean-modules:
 	dh_testroot
 	rm -f build-arch-stamp build-indep-stamp configure-stamp
 
-	# Add here commands to clean up after the build process.
-	cd src/rlocate-module;test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 	dh_clean
 
 
@@ -264,33 +241,8 @@ install: build
 	dh_clean -
 	dh_installdirs
 
-	# Create the directories to install the source into
-	dh_installdirs -p$(psource)  usr/src/modules/$(package)
-	dh_installdirs -p$(psource)  usr/src/modules/$(package)/debian
-
-	# Copy only the driver source to the proper location
-	cp -a src/rlocate-module debian/$(psource)/usr/src/modules/$(package)
-	install -m 644 debian/$(package)-source.override \
-		$(CURDIR)/debian/$(psource)/usr/share/lintian/overrides/$(package)-source
-	# Copy the needed debian/ pieces to the proper location
-	cp debian/*-module.* \
-		debian/$(psource)/usr/src/modules/$(package)/debian
-	cp debian/control.modules.in \
-		debian/$(psource)/usr/src/modules/$(package)/debian/control.in
-	cp debian/rules \
-		debian/$(psource)/usr/src/modules/$(package)/debian
-	cp debian/changelog \
-		debian/$(psource)/usr/src/modules/$(package)/debian
-	cp ChangeLog \
-		debian/$(psource)/usr/src/modules/$(package)
-	cp debian/copyright \
-		debian/$(psource)/usr/src/modules/$(package)/debian
-	cp debian/compat \
-		debian/$(psource)/usr/src/modules/$(package)/debian
-	# And finally, make a tarball from the module source.
-	tar czf debian/$(psource)/usr/src/$(package).tar.gz \
-		-C debian/$(psource)/usr/src modules
-	rm -rf debian/$(psource)/usr/src/modules
+	mkdir -p debian/rlocate/usr/src/rlocate-$(pversion)
+	cp -a src/rlocate-module/* `pwd`/debian/rlocate/usr/src/rlocate-$(pversion)
 
 	# install rlocate package
 	#$(MAKE) install DESTDIR=`pwd`/debian/rlocate

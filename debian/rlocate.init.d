@@ -21,7 +21,7 @@ load_modules ()
 
         for mod in $*
         do
-                modprobe -k $mod 2> /dev/null || MODULES_MISSING=true
+                modprobe $mod 2> /dev/null || MODULES_MISSING=true
         done
 
         if $MODULES_MISSING; then

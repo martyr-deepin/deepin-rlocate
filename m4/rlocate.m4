@@ -26,7 +26,7 @@ AC_DEFUN([AC_PATH_KERNEL_SOURCE],
 
   dnl Check for kernel version...
   AC_MSG_CHECKING(for kernel version)
-  if ! test -r $kerneldir/include/linux/version.h; then
+  if ! test -r $kerneldir/include/generated/uapi/linux/version.h; then
     AC_MSG_ERROR([
 *** The file $kerneldir/include/linux/version.h does not exist.
 *** Please, install the package with full kernel sources for your distribution
@@ -34,7 +34,7 @@ AC_DEFUN([AC_PATH_KERNEL_SOURCE],
 *** sources (default is $DEFAULT_KERNEL_DIR).
     ])
   fi
-  KERNEL_INC="-I$kerneldir/include"
+  KERNEL_INC="-I$kerneldir/include/generated/ -I$kerneldir/include/generated/uapi -I$kerneldir/include/config"
   HACK_KERNEL_INC=""
   ac_save_CFLAGS="$CFLAGS"
   CFLAGS="$CFLAGS $KERNEL_INC $HACK_KERNEL_INC"
@@ -43,16 +43,8 @@ AC_DEFUN([AC_PATH_KERNEL_SOURCE],
   #include <stdio.h>
   #include <ctype.h>
 
-  #ifdef USE_CONFIG_H
-  #include "$kerneldir/include/linux/config.h"
-  #else
-  #include "$kerneldir/include/linux/autoconf.h"
-  #endif
   #include "$kerneldir/include/linux/version.h"
-  
-  #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18)
-  #include "$kerneldir/include/linux/utsrelease.h"
-  #endif
+  #include "$kerneldir/include/generated/utsrelease.h"
   ]],
   [[
     FILE *f;
@@ -122,37 +114,37 @@ AC_DEFUN([AC_PATH_KERNEL_SOURCE],
   kpatchlevel=`expr $kpatchlevel + 0`
   ksublevel=`expr $ksublevel + 0`
   if test -z "$kversion" || test -z "$kpatchlevel" || test -z "$ksublevel"; then
-    AC_MSG_ERROR([*** probably missing $kerneldir/include/linux/version.h])
+    AC_MSG_ERROR([*** probably missing $kerneldir/include/generated/uapi/linux/version.h])
   fi
   
   kaversion="$kversion.$kpatchlevel.$ksublevel$kextraversion"
 
   AC_MSG_RESULT($kaversion)
 
-  if test $kpatchlevel -lt 6; then
-    AC_MSG_ERROR([*** rlocate needs kernel 2.6 to work])
-  fi
+  # if test $kpatchlevel -lt 6; then
+  #   AC_MSG_ERROR([*** rlocate needs kernel 2.6 to work])
+  # fi
 
 
-  AC_MSG_CHECKING(for security module support)
-  CONFIG_SECURITY=`grep 'CONFIG_SECURITY=' conftestdata | cut -d = -f 2`
-  CONFIG_SECURITY=`expr $CONFIG_SECURITY + 0`
-  if test $CONFIG_SECURITY -eq 0; then
-    AC_MSG_RESULT(no)
-    AC_MSG_ERROR([*** CONFIG_SECURITY must be enabled in the kernel config])
-  else
-    AC_MSG_RESULT(yes)
-  fi
+  # AC_MSG_CHECKING(for security module support)
+  # CONFIG_SECURITY=`grep 'CONFIG_SECURITY=' conftestdata | cut -d = -f 2`
+  # CONFIG_SECURITY=`expr $CONFIG_SECURITY + 0`
+  # if test $CONFIG_SECURITY -eq 0; then
+  #   AC_MSG_RESULT(no)
+  #   AC_MSG_ERROR([*** CONFIG_SECURITY must be enabled in the kernel config])
+  # else
+  #   AC_MSG_RESULT(yes)
+  # fi
   
-  AC_MSG_CHECKING(if capabilities are built-in)
-  CONFIG_SECURITY_CAPABILITIES=`grep 'CONFIG_SECURITY_CAPABILITIES=' conftestdata | cut -d = -f 2`
-  CONFIG_SECURITY_CAPABILITIES=`expr $CONFIG_SECURITY_CAPABILITIES + 0`
-  if test $CONFIG_SECURITY_CAPABILITIES -eq 1; then
-    AC_MSG_RESULT(yes)
-    AC_MSG_ERROR([*** Capabilities must be built as a module or disabled in the kernel config. ])
-  else
-    AC_MSG_RESULT(no)
-  fi
+  # AC_MSG_CHECKING(if capabilities are built-in)
+  # CONFIG_SECURITY_CAPABILITIES=`grep 'CONFIG_SECURITY_CAPABILITIES=' conftestdata | cut -d = -f 2`
+  # CONFIG_SECURITY_CAPABILITIES=`expr $CONFIG_SECURITY_CAPABILITIES + 0`
+  # if test $CONFIG_SECURITY_CAPABILITIES -eq 1; then
+  #   AC_MSG_RESULT(yes)
+  #   AC_MSG_ERROR([*** Capabilities must be built as a module or disabled in the kernel config. ])
+  # else
+  #   AC_MSG_RESULT(no)
+  # fi
   
   AC_MSG_CHECKING(if capabilities are built as module)
   CONFIG_SECURITY_CAPABILITIES_MODULE=`grep 'CONFIG_SECURITY_CAPABILITIES_MODULE=' conftestdata | cut -d = -f 2`
