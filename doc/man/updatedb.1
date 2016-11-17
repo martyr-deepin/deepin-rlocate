@@ -1,0 +1,70 @@
+.TH UPDATEDB 1 "August 15, 2007"
+.SH NAME
+updatedb \- update the rlocate database
+.SH SYNOPSIS
+.B updatedb
+[\-u] [\-U path] [\-e path1,path2,...] [\-f fstype1,...] [\-l [01] ] [\-q]
+[\-v,\-\-verbose] [\-I] [\-\-initdiffdb] [\-\-fast\-update] [\-\-full\-update]
+[\-V, \-\-version] [\-h, \-\-help] pattern...
+.SH DESCRIPTION
+This manual page
+documents 
+.BR rlocate ,
+a security-enhanced version of locate that is always up-to-date.
+.BR updatedb
+is simply a link to rlocate that implies the -u option.
+.SH OPTIONS
+.TP
+.I "\-u"
+Create rlocate database starting at the root directory.
+This is the default behavior when called as
+.B updatedb.
+.TP
+.I "\-U \fIpath\fP"
+Create rlocate database starting at path \fIpath\fP.
+.TP
+.I "\-e \fIdirs\fP"
+Exclude directories in the comma-separated list \fIdirs\fP
+from the rlocate database.
+.TP
+.I "\-f \fIfstypes\fP"
+Exclude filesystems in the comma-separated list \fIdirs\fP
+from the rlocate database.
+.TP
+.I "\-o \fIfile\fP"
+.I "\-\-output=\fIfile\fP"
+Specifies the database to create.
+.TP
+.I "\-I"
+.I "\-\-initdiffdb"
+Initializes the diff database if user database is created. If default database
+is created --initdiffdb is implied.
+.TP
+.I "\-\-fast-update"
+Force fast update of the default database.
+.TP
+.I "\-\-full-update"
+Force full update of the default database.
+.TP
+.I "\-q"
+Quiet mode; error messages are suppressed.
+.TP
+.I "\-v"
+Verbose mode; display files indexed when creating database
+.TP
+.I "\-\-help"
+Print a summary of the options to
+.B rlocate
+and exit.
+.TP
+.I "\-\-version"
+Print the version number of
+.B rlocate
+and exit.
+.SH VERSION
+updatedb v0.5.6
+
+.SH ENVIRONMENT
+.TP
+.SH "SEE ALSO"
+\fBrlocate\fP(1L)

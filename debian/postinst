@@ -1,0 +1,37 @@
+#!/bin/sh
+
+RLOCATE_GROUP=rlocate
+PROG=/usr/bin/rlocate
+PROG2=/usr/bin/rlocate-checkpoint
+RLOCATE_DBPATH=/var/lib/rlocate
+PKG_NAME=rlocate
+RLOCATE_UPDATEDB=/etc/cron.daily/rlocate
+
+set -e
+
+sg $RLOCATE_GROUP true 2>/dev/null || addgroup --system $RLOCATE_GROUP
+
+chown root.$RLOCATE_GROUP $PROG
+chmod g+s $PROG
+
+chown root.$RLOCATE_GROUP $PROG2
+chmod g+s $PROG2
+
+if [ ! -d $RLOCATE_DBPATH ]
+then
+	mkdir -p $RLOCATE_DBPATH
+fi
+chown root.$RLOCATE_GROUP $RLOCATE_DBPATH
+
+chmod 0750 $RLOCATE_DBPATH
+
+if [ ! -e $RLOCATE_DBPATH/rlocate.db ]; then
+  cat <<EOF
+
+WARNING: You should run '$RLOCATE_UPDATEDB' as root. locate will not work
+properly until you do or until it is run by cron (it is daily).
+
+EOF
+fi
+
+#DEBHELPER#

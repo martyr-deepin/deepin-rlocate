@@ -1,0 +1,81 @@
+#! /bin/sh
+#
+# This is an init script for Debian. Copy it to /etc/init.d/rlocate and type
+# > update-rc.d rlocate defaults 20
+#
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/local/sbin/rlocated
+NAME=rlocated
+DESC="rlocate daemon"
+
+test -x $DAEMON || exit 0
+
+# Include rlocate defaults if available
+if [ -f /etc/default/rlocate ] ; then
+	. /etc/default/rlocate
+fi
+
+set -e
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: $NAME"
+	if start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid \
+		--signal -0 --exec $DAEMON
+        then
+            echo " already running."
+        else
+	        if start-stop-daemon --start --quiet \
+                        --pidfile /var/run/$NAME.pid \
+		        --exec $DAEMON -- $DAEMON_OPTS
+                then
+                        echo "."
+                else
+                        echo "$NAME failed to start."
+                fi
+        fi
+	;;
+  stop)
+	echo -n "Stopping $DESC: $NAME"
+	if start-stop-daemon --stop --quiet --signal 0 \
+                --pidfile /var/run/$NAME.pid \
+		--exec $DAEMON
+        then
+	        start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid \
+		        --exec $DAEMON
+                # Now we wait for it to die
+                num=0
+                while start-stop-daemon --quiet --stop --signal 0 --exec $DAEMON
+                do
+                        num=$[$num+1]
+                        if [ $num -gt 10 ]
+                        then 
+                                echo -n " not died" 
+                                break 
+                        fi 
+                        sleep 1 
+                done 
+                echo "." 
+        else 
+                echo " not running." 
+        fi
+	;;
+  reload)
+	echo "Reloading $DESC configuration files."
+	start-stop-daemon --stop --signal 1 --quiet --pidfile \
+		/var/run/$NAME.pid --exec $DAEMON
+  ;;
+  restart|force-reload)
+        $0 stop
+        $0 start
+	;;
+  *)
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
+	#echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

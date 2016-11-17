@@ -1,0 +1,392 @@
+=head1 About rlocate
+
+        rlocate for Linux (2.6 Kernel)
+
+        Released January 27, 2005
+        Copyright (c) 2004,2005 Rasto Levrinc
+        Based on slocate by Kevin Lindsay
+
+rlocate is an implementation of the "locate" command that is always up-to-date.
+The database that the original locate uses is usually updated only once a day,
+so newer files cannot be located right away. The behavior of rlocate is the
+same as slocate, but it also maintains a diff database that gets updated
+whenever a new file is created. This is accomplished with rlocate kernel module
+and daemon. The rlocate kernel module can be compiled only with Linux 2.6 
+kernels.
+
+If you are interested how it is done internally, here is how:
+
+rlocate.ko is kernel module, that can be compiled and insmoded to the
+kernel. It has hooks for link, mkdir, mknod, open, rename and symlink 
+system calls with help of lsm. It stores filenames to the internal list. 
+Since all the file names have slash in the beginning it is replaced either
+with 'a' or 'm' depending on if a file or directory is added or directory
+is moved in the filesystem. Reason for that is, that directories that are
+renamed must be traversed in the rlocate daemon later.
+
+The module communicates with rlocate daemon with help of /dev/rlocate 
+device file. It writes all the file names with one file name per line to 
+this device file.
+
+rlocated is a daemon that reads /dev/rlocate device file and writes the
+paths without leading '/' to the rlocate diff database. It does that every 
+2 seconds. 
+If a directory was moved, it will be traversed and entries in the directory and
+its subdirectories are written to the diff database. 
+
+The locate command searches in rlocate database, which is the same as 
+original slocate database, diff database and temporal diff database. The 
+diff databases contain file names were added to the filesystem. 
+
+During the search also the file names are checked if they are accessible. 
+If a file name was removed, it is not accessible, so it will be not shown.
+
+The diff database is copied to temporal diff database 
+and is emptied in the beginning of the updatedb and the temporal diff 
+database is removed after updatedb is done. The reason for that is, so 
+that also during updatedb is running, which can take several minutes, the 
+locate command returns the correct results.
+
+updatedb should be run daily e.g. as a cron job same as with slocate. Otherwise 
+the searches would become slower with time.
+
+updatedb runs in two modes - fast update or full update. Fast update takes 2 to 
+10 seconds to complete. Full update takes several minutes. The drawback of fast 
+update is, that the database becomes more or less larger each day, since it
+contains also file names, that were removed. Fast update is run automatically
+every time, except the first time and every tenth time updatedb is started.
+
+
+=head1 Kernel configuration
+
+Before you start, check that you have Linux kernel version 2.6, and
+"Enable different security models" is set to yes. 
+
+At the moment the stacking with other security modules is not implemented, so 
+it is not possible to load other security modules with rlocate.
+
+The "Default Linux Capabilities" must be either disabled or set to 'M' in your 
+kernel configuration in "Security options" section. Capability module cannot be 
+loaded at the same time as rlocate. Disable also NSA SELinux.
+
+You can add selinux=0 in your boot loader config file. In grub that 
+would be - /boot/grub/menu.lst. 
+
+If you don't, you get this error later by insmoding the module:
+
+        FATAL: Error inserting rlocate
+        (/lib/modules/2.6.9-1.667/misc/rlocate.ko): Invalid argument
+
+Capabilities and SELinux are usually enabled by default in newest Debian, RedHat,
+SuSE etc. distributions and you would have to recompile the kernel.
+This problem will be probably solved in the future, when better stacking of
+security modules is possible.
+
+=head1 Installation from tarball
+
+First unpack the archive rlocate-x.x.x.tar.gz.
+
+Enter the rlocate-x.x.x directory and type:
+
+        ./configure
+        make
+        su -c "make install"
+
+After that, load the rlocate kernel module as root, for example with:
+
+        modprobe rlocate
+
+Or you can use some mechanism of your distribution to load the module at 
+boot time.
+
+You need to start rlocated daemon as root too. You can use some of the init 
+scripts in contrib directory for your distribution. 
+
+        /etc/init.d/rlocate start
+
+Run 
+
+        /etc/cron.daily/rlocate 
+
+as root or wait for cron job and you have locate 
+that is always up-to-date.
+
+It will hopefully compile and it works. If it doesn't you can either email 
+me <e9526925@stud3.tuwien.ac.at> or make a patch and send it to me.
+
+
+=head1 Uninstall
+
+Enter the rlocate-x.x.x directory and type:
+
+        su -c "make uninstall"
+
+
+=head1 Installing debian packages
+
+There are two debian packages,
+
+=over 4
+
+=item rlocate-source
+
+provides the source for the kernel modules.
+
+You can install it using the make-kpkg(1) command provided by the kernel-package 
+Debian package. This will produce a corresponding rlocate-module package for
+the Debian kernel-image package that you are using. This is "the Debian
+way". See the "modules_image" section of the make-kpkg(1) man page.
+Notice that you have to be root to build the rlocate-module.
+
+You need to have kernel-image-2.6.x installed for following.
+
+First install source package as root
+
+dpkg -i rlocate-source_x.x.x_all.deb
+
+This will install rlocate.tar.gz to the /usr/src directory. Untar it
+        
+tar xvzpf rlocate.tar.gz
+
+Change to /usr/src/linux-2.6.x directory and make modules image
+
+make-kpkg modules_image
+
+Install rlocate module
+
+dpkg -i /usr/src/rlocate-module-... i386.deb
+
+=item rlocate
+
+provides user-space applications for searching the file names in the database.
+
+You can install it with following command
+
+dpkg -i rlocate_x.x.x_i386.deb
+
+After that, you need to create the database and you are done.
+
+/etc/cron.daily/rlocate
+
+=back
+
+
+=head1 Setting up rlocate manually
+
+1. If the make install does not work, a manual setup  will have to
+be done.  The first thing to do is copy the rlocate binary
+to a directory in your path.  Usually the directory:
+
+        /usr/local/bin/
+
+will suffice.
+      
+2. Next you must create a group called:
+
+        rlocate
+
+You can do this by either editing the /etc/group file manually or use
+a group add utility.  The following is supported by Linux:
+
+        groupadd rlocate
+
+3. Once the group has been created, you must now change the ownership and
+permissions of the rlocate and rlocated binaries. To do this execute 
+the following commands.
+
+        chown 0:rlocate /usr/local/bin/rlocate
+        chmod 2755 /usr/local/bin/rlocate
+        
+        chown 0:0 /usr/local/sbin/rlocated 
+        chmod 0755 /usr/local/bin/rlocated
+
+4. To make rlocate more convenient to use, you can symlink 'rlocate' to 
+'locate'.
+
+Move the old version of locate to something else if it exists.
+
+        ln -s /usr/local/bin/rlocate /usr/local/bin/locate
+
+5. To make updating the database more convenient, you may link 'rlocate'
+to 'updatedb'.  This way, just running 'updatedb' will start to index
+your entire drive.
+
+        ln -s /usr/local/bin/rlocate /usr/local/bin/updatedb
+
+6. Then you have to make sure this path exits:
+
+        /usr/local/var/rlocate/
+
+You can do this by executing this command:
+
+        mkdir -p /usr/local/var/rlocate
+
+Now just give it the right ownership:
+
+        chown 0:rlocate /usr/local/var/rlocate
+
+7. Then you have to load rlocate.ko module from rlocate-module directory. 
+You can copy it to:
+
+        /lib/modules/2.6.x/misc/ 
+
+directory and make sure, that module is loaded at boot time. How it is 
+done depends on your linux distribution. Change 2.6.x to your kernel 
+version. "Enable different security models" must be set and "Default
+Linux Capabilities" must be unset or set to "M" in your kernel
+configuration in "Security options" section. Disable also NSA SELinux.
+You can add selinux=0 in your boot loader config file. In grub that would
+be - /boot/grub/menu.lst.
+
+8. Now you need init script to start rlocated daemon from rlocate-daemon 
+directory. Some example init scripts are in contrib directory.
+You should copy it to /etc/init.d directory or something like that.
+
+Copy the rlocated binary for example in:
+
+        /usr/local/sbin
+
+directory.
+
+9. Create a /dev/rlocate device file if you are not using udev or devfs.
+You will have to look in kernel log file after loading the rlocate
+module for major number. You can do it with this command:
+
+        mknod /dev/rlocate c 254 0
+
+where 254 is major number, that can be different on your computer.
+
+
+=head1 Creating the database
+
+When creating the database, there are a few options that you may
+use to customize which files get indexed and how.  The database will be
+stored in /var/lib/rlocate/. The two main options are:
+
+        -u       - Indexes every file on your system.
+        -U <dir> - Indexes every file in the directory <dir>.
+
+Below are some examples of different types of indexing options:
+
+Create an index of every file in every directory on your system.
+
+        rlocate -u
+
+Create an index of every file in the specified directory <dir>.
+
+        rlocate -U <dir>
+
+Create an index of every file excluding the specified files/directories,
+/proc /dev and /tmp
+
+        rlocate -e "/proc,/dev/,/tmp" -u
+
+Create an index of every file excluding files on NFS and iso9660 type
+filesystems.
+
+        rlocate -f "NFS,iso9660" -u
+
+If you symlinked /usr/local/bin/rlocate to /usr/local/bin/updatedb, 
+then executing the updatedb command will automatically index the root 
+filesystem starting at '/'.  This will also cause the file 
+'/etc/updatedb.conf' to be parsed.  This file is in the same format as 
+the original updatedb.sh configuration file.
+
+
+=head1 rlocate options
+
+     -u                 - Create rlocate database starting at path /.
+     
+     -U <dir>           - Create rlocate database starting at path <dir>.     
+
+     -e <dir1,dir2,...> - Exclude directories from rlocate database.
+     
+     -f <fstype1,...>   - Exclude files on specified filesystem types from 
+                          the rlocate database.
+                          
+     -c                 - Force rlocate to parse '/etc/updatedb.conf' when
+                          updating the database.
+     
+     -q                 - Quite mode.  Error messages are suppressed.
+     
+     -n <num>           - Limit the amount of results shown to <num>.
+
+     -i                 - Does a case insensitive search.
+
+     -r <regexp>
+     --regexp=<regexp>  - Search the database using a basic POSIX regular
+                          expression.
+
+     -o <file>
+     --output=<file>    - Specifies the database to create.
+
+     -d <path>
+     --database=path    - Specifies path of database to search in.
+
+     -I 
+     --initdiffdb       - Initializes the diff database if user database is
+                          created. If default database is created --initdiffdb 
+                          is implied.
+
+     --fast-update      - Force fast update of the default database.
+
+     --full-update      - Force full update of the default database.
+
+     -h
+     --help             - Display this help.
+     
+     -v
+     --verbose          - Verbose mode. Display files when creating database.
+     
+     -V
+     --version          - Display version.
+
+
+=head1 rlocate-checkpoint options
+
+        Usage: /usr/local/bin/rlocate-checkpoint [OPTION]
+
+        With no OPTION: show file names, that were added to the filesystem
+                        since the last updatedb or after checkpoint, if 
+                        a checkpoint was created with --create option.
+
+         -c --create          - Create a check point.
+         -d --database=<path> - Specifies the path of databases, delimited 
+                                with ':', to search in.
+         -v --verbose         - Verbose mode.
+         -h --help            - Display this help and exit.
+         -V --version         - Display version.
+
+
+=head1 Ports
+
+rlocate will work only on Linux with version 2.6. 
+
+
+=head1 Credits
+
+        Peter Robinson for lsm implementation
+        Kevin Lindsay for original slocate
+        Sven Luther for debian code from his unicorn package.
+        Anton Eartl for the idea and suggestions.
+
+
+=head1 Author and bugs
+
+Author: Rasto Levrinc
+
+Bug Reports: e9526925@stud3.tuwien.ac.at
+
+HTTP:  http://www.sourceforge.net/projects/rlocate/
+
+Bugs:
+        Stacking with other security modules is not implemented yet.
+
+=head1 Links
+
+My homepage (L<http://stud3.tuwien.ac.at/~e9526925/>)
+
+Doodle (L<http://gnunet.org/doodle/>) is a tool to quickly search the documents 
+on a computer. It uses different approach for keeping its database up-to-date.
+
+

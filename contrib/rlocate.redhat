@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# rlocate:     This is an init script for RedHat distribution.
+#
+# Author:      Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+#
+# chkconfig: 345 95 10
+# description: rlocate is a locate that is always up-to-date.
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+PATH=/usr/local/sbin:/usr/local/bin:$PATH
+
+# See how we were called.
+case "$1" in
+  start)
+	echo -n "Starting rlocate: "
+	daemon rlocated
+	echo
+	touch /var/lock/subsys/rlocate
+	;;
+  stop)
+	echo -n "Shutting down rlocate: "
+	killproc rlocated
+	echo
+	rm -f /var/lock/subsys/rlocate
+	;;
+  status)
+	status rlocated
+	;;
+  restart)
+	$0 stop
+	$0 start
+	;;
+  reload)
+        echo -n "Reloading rlocate: "
+        killproc rlocated -HUP
+        RETVAL=$?
+	echo
+        ;;
+  *)
+	echo "Usage: rlocate {start|stop|status|restart|reload}"
+	exit 1
+esac
+
+exit 0
+

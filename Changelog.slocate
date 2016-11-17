@@ -1,0 +1,137 @@
+Secure Locate - Release 3.1 (stable)
+------------------------------------
+3.1  - Its been out there, and the only bug reported in the 2 months since the
+       last beta release was a 3 line minor fix. So 3.1 is the new official,
+       stable release.
+     - The list of user defined database paths were not being parsed
+       correctly. Thanks to Vincent Lefevre for finding the bug and fixing it.
+
+3.0  - The environment variable LOCATE_PATH was not being used properly. It
+beta   will now be used the same as in v2.7.
+r3   - slocate was returning non zero for -h, --help, -V and --version. It now
+       returns zero.
+     - PRUNEFS was being ignored in /etc/updatedb.conf
+     - Added documentation describing how /etc/updatedb.conf is used and what
+       is supported to the README and the slocate.1 and updatedb.1 man pages.
+
+3.0  - Added fix to compensate for default unsigned chars on PPC.
+beta - Fixed segfault due to 0 length char array. oops.
+r2   - Fixed a bug where dangling links were ignored.
+
+3.0 - A complete rewrite. The idea being that when I first wrote this I was
+beta  still a bit of a newbie. This version has a better design and will be
+r1    easier to debug and maintain. I have also received too many database
+      corruption emails and I wanted to redesign the encode/decode routines
+      to make sure that this was fixed.
+    - This version should have the same functionality of v2.7. Free time is
+      rare so I havn't had any to add any of the features people have been
+      asking for. Feature patches are welcome!
+
+2.7 - Wanderlei Antonio Cavassin <cavassin@conectiva.com.br> fixed a segfault
+      when a regular expression error occurs.
+    - Fixed the --regexp= option. It was not working properly.
+    - Added a minor patch added to the Debian version of slocate.
+    - Fix printf-is-a-macro issue (gcc 3.0).  Patch courtesy of 
+      rbradetich@uswest.net.
+    - Fixed a segfault when -r regex is used with an extra search string.
+
+2.6 - Fixed some segfaults that occured with random data to -d, -o,
+      and -r options.
+    - Added a patch to make it work on Solaris
+    - Added more path permission checking so that even if a file is
+      readable in a directory that is not readable, slocate will not
+      disclose the file to the user.
+
+2.5 - Really fixed the heap corruption bug.
+    - Fixed a bug that caused slocate to segfault when path lengths are
+      too large.
+    - Made slocate not assign the 'slocate' group to a database if the 
+      UID is not 0.
+    - Added alot of error checking (ie, all mallocs, fchdir, etc).
+    - Autoconfed.
+
+2.4 - if /etc/mtab was a symlink to /proc/mounts, load_file() would not
+      read /proc/mounts because /proc/mounts' filesize is 0.  Changed
+      load_file to fix this bug.
+
+2.3 - Optimized the decode_db() function.  This speeds up searching up to
+      40%. Also did some general clean up of some of the code.
+
+2.2 - Fixed a segfault.  If the environment variable LOCATE_PATH had an
+      invalid slocate.db file path, slocate could segfault.  Proper checking
+      now takes place to fix this.
+
+2.1 - Fixed a segfault (very silly bug) which occured when the 
+      /etc/updatedb.conf from the old GNU Locate was missing.  Secure Lcoate
+      can still use this file so this is why it was checking for it.
+     - Luca Berra <bluca@vodka.it> added case insensitive searching with the
+       -i option.  He also optimized the code to make searching a faster.
+     - Hans-Juergen Godau <godau@wi-inf.uni-essen.de> fixed a segfault when
+       searching through more than one database.
+
+2.0 - Converted the original recursive file tree walking code over to the
+      newly supported fts() function.  This is the main reason for pushing
+      the version to 2.0.  This is much more stable and has fixed a few
+      bugs that didn't allow the whole file system to be scanned.  I took
+      the fts() code right from glibc so that it may be used on libc5
+      systems.
+    - Added File System Exclusion option. ( -f "fstype1,fstype2,..." ).
+      Now you can exclude NFS, proc, ext2, etc without listing each path.
+    - If 'updatedb' is used to update the database, GNU Locate's original
+      '/etc/updatedb.conf' will be used to exclude file systems and paths.
+      When using 'slocate' to update the database, the '-c' option may now
+      be used to parse the '/etc/updatedb.conf' file.
+      *NOTE* - This only works under Linux.
+
+1.6 - Increased performance when updating the database thanx to Alexander
+      V. Lukyanov.
+    - Matt added some tweaks to make it easier to install on FreeBSD 3.1.
+    - Fixed a bug which didn't allow you to use ./database when using the
+      -o option
+
+1.5 - Added Regular Expression searching (-r and --regexp options)
+    - Added an option to specify the location of where to create the database
+      when indexing a filesystem. Thanks to Ulf Betlehem <flu@iki.fi> 
+    - Fixed a bug which caused slocate to exit when a directory could not be
+      opened. Thanks to Jim Dougharty  <james.dougharty@sabre.com>.
+    - Multiple search strings are now possible, and the decode_db() function
+      will now use access() instead of opendir to check is a directory is
+      readable thanks to Glenn Maynard <glennm@mediaone.net>.
+    - You can now limit the amount of results shown using the -n option.
+    - A symlink from updatedb to slocate when executed will create a new
+      database starting at the root filesystem '/'.
+
+1.4 - Added globbing support.  ( *,?,[^], )
+    - Made slocate a little more backward compatible to GNU locate for linux.
+    - Added a verbose option to view which files are being indexed.
+    - Removed some silly debug code that cause slocate to just exit if
+      the -e option was used.
+    - Sean Mcnulty <lazy@ccf.rutgers.edu> fixed a bug which caused the decode
+      function to fail.
+    - As pointed out by a few people, rindex is not as portable as strrchr so
+      those were changed over.
+    - Added Quiet Mode.  Error messages are suppressed.
+    - Fixed a bug which allowed users to view files in non readable 
+       directories.
+
+1.3 - Optimized some more silly code.
+    - Fixed a segfault when running slocate -u when the /var/lib/slocate
+      directory does not exist.
+
+1.2 - Changed the decode code to make slocate up to 4 times faster.
+    - Optimized other code to make more efficient.
+
+1.1 - With suggestions from Marc Schaefer <schaefer@alphanet.ch>, some
+      optimization was done. Instead of storeing all the file permissions
+      in the db file, just do a lstat() on any files that match the
+      search string.  This makes it a bit quicker, and the db file is
+      also smaller.
+      
+    - Cleaned up the getopts area. Doesn't core anymore when bogus options
+      are given. (*blush* :)
+      
+    - Checks UID when creating DB. Must be root, (or if you modify main.c
+      you can change it to something else.) at the moment. This may change
+      when there become a conf file in the future.
+
+1.0 First release.

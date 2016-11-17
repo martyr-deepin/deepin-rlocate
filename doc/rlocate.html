@@ -1,0 +1,411 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>About rlocate</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@localhost" />
+</head>
+
+<body style="background-color: white">
+
+<p><a name="__index__"></a></p>
+<!-- INDEX BEGIN -->
+
+<ul>
+
+	<li><a href="#about_rlocate">About rlocate</a></li>
+	<li><a href="#kernel_configuration">Kernel configuration</a></li>
+	<li><a href="#installation_from_tarball">Installation from tarball</a></li>
+	<li><a href="#uninstall">Uninstall</a></li>
+	<li><a href="#installing_debian_packages">Installing debian packages</a></li>
+	<li><a href="#setting_up_rlocate_manually">Setting up rlocate manually</a></li>
+	<li><a href="#creating_the_database">Creating the database</a></li>
+	<li><a href="#rlocate_options">rlocate options</a></li>
+	<li><a href="#rlocatecheckpoint_options">rlocate-checkpoint options</a></li>
+	<li><a href="#ports">Ports</a></li>
+	<li><a href="#credits">Credits</a></li>
+	<li><a href="#author_and_bugs">Author and bugs</a></li>
+	<li><a href="#links">Links</a></li>
+</ul>
+<!-- INDEX END -->
+
+<hr />
+<p>
+</p>
+<h1><a name="about_rlocate">About rlocate</a></h1>
+<pre>
+        rlocate for Linux (2.6 Kernel)</pre>
+<pre>
+        Released January 27, 2005
+        Copyright (c) 2004,2005 Rasto Levrinc
+        Based on slocate by Kevin Lindsay</pre>
+<p>rlocate is an implementation of the ``locate'' command that is always up-to-date.
+The database that the original locate uses is usually updated only once a day,
+so newer files cannot be located right away. The behavior of rlocate is the
+same as slocate, but it also maintains a diff database that gets updated
+whenever a new file is created. This is accomplished with rlocate kernel module
+and daemon. The rlocate kernel module can be compiled only with Linux 2.6 
+kernels.</p>
+<p>If you are interested how it is done internally, here is how:</p>
+<p>rlocate.ko is kernel module, that can be compiled and insmoded to the
+kernel. It has hooks for link, mkdir, mknod, open, rename and symlink 
+system calls with help of lsm. It stores filenames to the internal list. 
+Since all the file names have slash in the beginning it is replaced either
+with 'a' or 'm' depending on if a file or directory is added or directory
+is moved in the filesystem. Reason for that is, that directories that are
+renamed must be traversed in the rlocate daemon later.</p>
+<p>The module communicates with rlocate daemon with help of /dev/rlocate 
+device file. It writes all the file names with one file name per line to 
+this device file.</p>
+<p>rlocated is a daemon that reads /dev/rlocate device file and writes the
+paths without leading '/' to the rlocate diff database. It does that every 
+2 seconds. 
+If a directory was moved, it will be traversed and entries in the directory and
+its subdirectories are written to the diff database.</p>
+<p>The locate command searches in rlocate database, which is the same as 
+original slocate database, diff database and temporal diff database. The 
+diff databases contain file names were added to the filesystem.</p>
+<p>During the search also the file names are checked if they are accessible. 
+If a file name was removed, it is not accessible, so it will be not shown.</p>
+<p>The diff database is copied to temporal diff database 
+and is emptied in the beginning of the updatedb and the temporal diff 
+database is removed after updatedb is done. The reason for that is, so 
+that also during updatedb is running, which can take several minutes, the 
+locate command returns the correct results.</p>
+<p>updatedb should be run daily e.g. as a cron job same as with slocate. Otherwise 
+the searches would become slower with time.</p>
+<p>updatedb runs in two modes - fast update or full update. Fast update takes 2 to 
+10 seconds to complete. Full update takes several minutes. The drawback of fast 
+update is, that the database becomes more or less larger each day, since it
+contains also file names, that were removed. Fast update is run automatically
+every time, except the first time and every tenth time updatedb is started.</p>
+<p>
+</p>
+<hr />
+<h1><a name="kernel_configuration">Kernel configuration</a></h1>
+<p>Before you start, check that you have Linux kernel version 2.6, and
+``Enable different security models'' is set to yes.</p>
+<p>At the moment the stacking with other security modules is not implemented, so 
+it is not possible to load other security modules with rlocate.</p>
+<p>The ``Default Linux Capabilities'' must be either disabled or set to 'M' in your 
+kernel configuration in ``Security options'' section. Capability module cannot be 
+loaded at the same time as rlocate. Disable also NSA SELinux.</p>
+<p>You can add selinux=0 in your boot loader config file. In grub that 
+would be - /boot/grub/menu.lst.</p>
+<p>If you don't, you get this error later by insmoding the module:</p>
+<pre>
+        FATAL: Error inserting rlocate
+        (/lib/modules/2.6.9-1.667/misc/rlocate.ko): Invalid argument</pre>
+<p>Capabilities and SELinux are usually enabled by default in newest Debian, RedHat,
+SuSE etc. distributions and you would have to recompile the kernel.
+This problem will be probably solved in the future, when better stacking of
+security modules is possible.</p>
+<p>
+</p>
+<hr />
+<h1><a name="installation_from_tarball">Installation from tarball</a></h1>
+<p>First unpack the archive rlocate-x.x.x.tar.gz.</p>
+<p>Enter the rlocate-x.x.x directory and type:</p>
+<pre>
+        ./configure
+        make
+        su -c &quot;make install&quot;</pre>
+<p>After that, load the rlocate kernel module as root, for example with:</p>
+<pre>
+        modprobe rlocate</pre>
+<p>Or you can use some mechanism of your distribution to load the module at 
+boot time.</p>
+<p>You need to start rlocated daemon as root too. You can use some of the init 
+scripts in contrib directory for your distribution.</p>
+<pre>
+        /etc/init.d/rlocate start</pre>
+<p>Run</p>
+<pre>
+        /etc/cron.daily/rlocate</pre>
+<p>as root or wait for cron job and you have locate 
+that is always up-to-date.</p>
+<p>It will hopefully compile and it works. If it doesn't you can either email 
+me &lt;<a href="mailto:e9526925@stud3.tuwien.ac.at">e9526925@stud3.tuwien.ac.at</a>&gt; or make a patch and send it to me.</p>
+<p>
+</p>
+<hr />
+<h1><a name="uninstall">Uninstall</a></h1>
+<p>Enter the rlocate-x.x.x directory and type:</p>
+<pre>
+        su -c &quot;make uninstall&quot;</pre>
+<p>
+</p>
+<hr />
+<h1><a name="installing_debian_packages">Installing debian packages</a></h1>
+<p>There are two debian packages,</p>
+<dl>
+<dt><strong><a name="item_rlocate_2dsource">rlocate-source</a></strong>
+
+<dd>
+<p>provides the source for the kernel modules.</p>
+</dd>
+<dd>
+<p>You can install it using the make-kpkg(1) command provided by the kernel-package 
+Debian package. This will produce a corresponding rlocate-module package for
+the Debian kernel-image package that you are using. This is ``the Debian
+way''. See the ``modules_image'' section of the make-kpkg(1) man page.
+Notice that you have to be root to build the rlocate-module.</p>
+</dd>
+<dd>
+<p>You need to have kernel-image-2.6.x installed for following.</p>
+</dd>
+<dd>
+<p>First install source package as root</p>
+</dd>
+<dd>
+<p>dpkg -i rlocate-source_x.x.x_all.deb</p>
+</dd>
+<dd>
+<p>This will install rlocate.tar.gz to the /usr/src directory. Untar it
+</p>
+</dd>
+<dd>
+<pre>
+
+tar xvzpf rlocate.tar.gz</pre>
+</dd>
+<dd>
+<p>Change to /usr/src/linux-2.6.x directory and make modules image</p>
+</dd>
+<dd>
+<p>make-kpkg modules_image</p>
+</dd>
+<dd>
+<p>Install rlocate module</p>
+</dd>
+<dd>
+<p>dpkg -i /usr/src/rlocate-module-... i386.deb</p>
+</dd>
+</li>
+<dt><strong><a name="item_rlocate">rlocate</a></strong>
+
+<dd>
+<p>provides user-space applications for searching the file names in the database.</p>
+</dd>
+<dd>
+<p>You can install it with following command</p>
+</dd>
+<dd>
+<p>dpkg -i rlocate_x.x.x_i386.deb</p>
+</dd>
+<dd>
+<p>After that, you need to create the database and you are done.</p>
+</dd>
+<dd>
+<p>/etc/cron.daily/rlocate</p>
+</dd>
+</li>
+</dl>
+<p>
+</p>
+<hr />
+<h1><a name="setting_up_rlocate_manually">Setting up rlocate manually</a></h1>
+<p>1. If the make install does not work, a manual setup  will have to
+be done.  The first thing to do is copy the rlocate binary
+to a directory in your path.  Usually the directory:</p>
+<pre>
+        /usr/local/bin/</pre>
+<p>will suffice.
+</p>
+<pre>
+
+2. Next you must create a group called:</pre>
+<pre>
+        rlocate</pre>
+<p>You can do this by either editing the /etc/group file manually or use
+a group add utility.  The following is supported by Linux:</p>
+<pre>
+        groupadd rlocate</pre>
+<p>3. Once the group has been created, you must now change the ownership and
+permissions of the rlocate and rlocated binaries. To do this execute 
+the following commands.</p>
+<pre>
+        chown 0:rlocate /usr/local/bin/rlocate
+        chmod 2755 /usr/local/bin/rlocate
+        
+        chown 0:0 /usr/local/sbin/rlocated 
+        chmod 0755 /usr/local/bin/rlocated</pre>
+<p>4. To make rlocate more convenient to use, you can symlink 'rlocate' to 
+'locate'.</p>
+<p>Move the old version of locate to something else if it exists.</p>
+<pre>
+        ln -s /usr/local/bin/rlocate /usr/local/bin/locate</pre>
+<p>5. To make updating the database more convenient, you may link 'rlocate'
+to 'updatedb'.  This way, just running 'updatedb' will start to index
+your entire drive.</p>
+<pre>
+        ln -s /usr/local/bin/rlocate /usr/local/bin/updatedb</pre>
+<p>6. Then you have to make sure this path exits:</p>
+<pre>
+        /usr/local/var/rlocate/</pre>
+<p>You can do this by executing this command:</p>
+<pre>
+        mkdir -p /usr/local/var/rlocate</pre>
+<p>Now just give it the right ownership:</p>
+<pre>
+        chown 0:rlocate /usr/local/var/rlocate</pre>
+<p>7. Then you have to load rlocate.ko module from rlocate-module directory. 
+You can copy it to:</p>
+<pre>
+        /lib/modules/2.6.x/misc/</pre>
+<p>directory and make sure, that module is loaded at boot time. How it is 
+done depends on your linux distribution. Change 2.6.x to your kernel 
+version. ``Enable different security models'' must be set and ``Default
+Linux Capabilities'' must be unset or set to ``M'' in your kernel
+configuration in ``Security options'' section. Disable also NSA SELinux.
+You can add selinux=0 in your boot loader config file. In grub that would
+be - /boot/grub/menu.lst.</p>
+<p>8. Now you need init script to start rlocated daemon from rlocate-daemon 
+directory. Some example init scripts are in contrib directory.
+You should copy it to /etc/init.d directory or something like that.</p>
+<p>Copy the rlocated binary for example in:</p>
+<pre>
+        /usr/local/sbin</pre>
+<p>directory.</p>
+<p>9. Create a /dev/rlocate device file if you are not using udev or devfs.
+You will have to look in kernel log file after loading the rlocate
+module for major number. You can do it with this command:</p>
+<pre>
+        mknod /dev/rlocate c 254 0</pre>
+<p>where 254 is major number, that can be different on your computer.</p>
+<p>
+</p>
+<hr />
+<h1><a name="creating_the_database">Creating the database</a></h1>
+<p>When creating the database, there are a few options that you may
+use to customize which files get indexed and how.  The database will be
+stored in /var/lib/rlocate/. The two main options are:</p>
+<pre>
+        -u       - Indexes every file on your system.
+        -U &lt;dir&gt; - Indexes every file in the directory &lt;dir&gt;.</pre>
+<p>Below are some examples of different types of indexing options:</p>
+<p>Create an index of every file in every directory on your system.</p>
+<pre>
+        rlocate -u</pre>
+<p>Create an index of every file in the specified directory &lt;dir&gt;.</p>
+<pre>
+        rlocate -U &lt;dir&gt;</pre>
+<p>Create an index of every file excluding the specified files/directories,
+/proc /dev and /tmp</p>
+<pre>
+        rlocate -e &quot;/proc,/dev/,/tmp&quot; -u</pre>
+<p>Create an index of every file excluding files on NFS and iso9660 type
+filesystems.</p>
+<pre>
+        rlocate -f &quot;NFS,iso9660&quot; -u</pre>
+<p>If you symlinked /usr/local/bin/rlocate to /usr/local/bin/updatedb, 
+then executing the updatedb command will automatically index the root 
+filesystem starting at '/'.  This will also cause the file 
+'/etc/updatedb.conf' to be parsed.  This file is in the same format as 
+the original updatedb.sh configuration file.</p>
+<p>
+</p>
+<hr />
+<h1><a name="rlocate_options">rlocate options</a></h1>
+<pre>
+     -u                 - Create rlocate database starting at path /.
+     
+     -U &lt;dir&gt;           - Create rlocate database starting at path &lt;dir&gt;.</pre>
+<pre>
+     -e &lt;dir1,dir2,...&gt; - Exclude directories from rlocate database.
+     
+     -f &lt;fstype1,...&gt;   - Exclude files on specified filesystem types from 
+                          the rlocate database.
+                          
+     -c                 - Force rlocate to parse '/etc/updatedb.conf' when
+                          updating the database.
+     
+     -q                 - Quite mode.  Error messages are suppressed.
+     
+     -n &lt;num&gt;           - Limit the amount of results shown to &lt;num&gt;.</pre>
+<pre>
+     -i                 - Does a case insensitive search.</pre>
+<pre>
+     -r &lt;regexp&gt;
+     --regexp=&lt;regexp&gt;  - Search the database using a basic POSIX regular
+                          expression.</pre>
+<pre>
+     -o &lt;file&gt;
+     --output=&lt;file&gt;    - Specifies the database to create.</pre>
+<pre>
+     -d &lt;path&gt;
+     --database=path    - Specifies path of database to search in.</pre>
+<pre>
+     -I 
+     --initdiffdb       - Initializes the diff database if user database is
+                          created. If default database is created --initdiffdb 
+                          is implied.</pre>
+<pre>
+     --fast-update      - Force fast update of the default database.</pre>
+<pre>
+     --full-update      - Force full update of the default database.</pre>
+<pre>
+     -h
+     --help             - Display this help.
+     
+     -v
+     --verbose          - Verbose mode. Display files when creating database.
+     
+     -V
+     --version          - Display version.</pre>
+<p>
+</p>
+<hr />
+<h1><a name="rlocatecheckpoint_options">rlocate-checkpoint options</a></h1>
+<pre>
+        Usage: /usr/local/bin/rlocate-checkpoint [OPTION]</pre>
+<pre>
+        With no OPTION: show file names, that were added to the filesystem
+                        since the last updatedb or after checkpoint, if 
+                        a checkpoint was created with --create option.</pre>
+<pre>
+         -c --create          - Create a check point.
+         -d --database=&lt;path&gt; - Specifies the path of databases, delimited 
+                                with ':', to search in.
+         -v --verbose         - Verbose mode.
+         -h --help            - Display this help and exit.
+         -V --version         - Display version.</pre>
+<p>
+</p>
+<hr />
+<h1><a name="ports">Ports</a></h1>
+<p>rlocate will work only on Linux with version 2.6.</p>
+<p>
+</p>
+<hr />
+<h1><a name="credits">Credits</a></h1>
+<pre>
+        Peter Robinson for lsm implementation
+        Kevin Lindsay for original slocate
+        Sven Luther for debian code from his unicorn package.
+        Anton Eartl for the idea and suggestions.</pre>
+<p>
+</p>
+<hr />
+<h1><a name="author_and_bugs">Author and bugs</a></h1>
+<p>Author: Rasto Levrinc</p>
+<p>Bug Reports: <a href="mailto:e9526925@stud3.tuwien.ac.at">e9526925@stud3.tuwien.ac.at</a></p>
+<p>HTTP:  <a href="http://www.sourceforge.net/projects/rlocate/">http://www.sourceforge.net/projects/rlocate/</a></p>
+<p>Bugs:
+        Stacking with other security modules is not implemented yet.</p>
+<p>
+</p>
+<hr />
+<h1><a name="links">Links</a></h1>
+<p>My homepage (<a href="http://stud3.tuwien.ac.at/~e9526925/">http://stud3.tuwien.ac.at/~e9526925/</a>)
+
+</p>
+<p>Doodle (<a href="http://gnunet.org/doodle/">http://gnunet.org/doodle/</a>) is a tool to quickly search the documents 
+on a computer. It uses different approach for keeping its database up-to-date.
+
+</p>
+
+</body>
+
+</html>

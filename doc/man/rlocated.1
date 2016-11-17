@@ -1,0 +1,78 @@
+.TH RLOCATED 1 "August 15, 2007"
+.\" *************************** NAME *********************************
+.SH NAME
+rlocated \- rlocate daemon
+.\" *************************** SYNOPSIS *********************************
+.SH SYNOPSIS
+.B rlocated
+[\fIoptions\fP]
+.\" *************************** DESCRIPTION *********************************
+.SH DESCRIPTION
+\fBrlocated\fP is daemon that reads /dev/rlocate device file and writes the
+content to the rlocate database difference file. The rlocate kernel module fills
+up the /dev/rlocate device file. The database difference file merged with 
+rlocate database, which is created once a day, is used by rlocate to search in 
+up-to-date version of the database.
+.\" *************************** OPTIONS *********************************
+.SS OPTIONS
+.TP
+.I \-n 
+.I \-\-nodaemon
+Do not run in daemon mode.
+.TP
+.I \-l
+.I \-\-noloop
+Don't run in loop.
+.TP
+.I \-i <seconds>
+.I \-\-interval=<seconds>
+Refresh every n seconds.
+.TP
+.I \-o <file>
+.I \-\-output=<file>
+Specify the rlocate database.
+.TP
+.I \-h
+.I \-\-help
+Display help.
+.TP
+.I \-V
+.I \-\-version
+Display version.
+.\" *********************** CONTROLLING RLOCATED ****************************
+.SH "CONTROLLING RLOCATED"
+.LP
+\fBrlocated\fP performs certain actions when it receives certain signals.
+.TP 15
+.I SIGHUP
+causes the rlocated to re-read the config file.
+.TP
+.I SIGTERM, SIGINT, SIGKILL
+causes program termination.
+.\" *********************** FILES ****************************
+.\".SH FILES
+.\".LP
+.\".PD .1v
+.\".TP 20
+.\".B /etc/rlocate/rlocate.conf
+.\"default configuration file
+.\".PD
+.\" *********************** SEE ALSO ****************************
+.SH "SEE ALSO"
+.BR "rlocate(1),"
+.BR "updatedb(1),"
+.BR "rlocate-checkpoint(1)"
+
+.\" *********************** VERSION ****************************
+.SH VERSION
+rlocated v0.5.6
+
+.\" *********************** AUTHOR ****************************
+.SH AUTHOR
+Rasto Levrinc - Copyright (c) 2004,2005
+
+.\" *********************** BUG REPORT ************************
+.SH BUG REPORT
+Report any bugs to Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+
+

@@ -1,0 +1,60 @@
+.TH RLOCATE-CHECKPOINT 1 "August 15, 2007"
+.\" *************************** NAME *********************************
+.SH NAME
+rlocate-checkpoint \- rlocate checkpoint tool
+.\" *************************** SYNOPSIS *********************************
+.SH SYNOPSIS
+.B rlocate-checkpoint
+[\fIoptions\fP]
+.\" *************************** DESCRIPTION *********************************
+.SH DESCRIPTION
+\fBrlocate-checkpoint\fP is a tool that shows file names that were added to 
+the filesystem since the last updatedb or after checkpoint, if a checkpoint 
+was created with --create option.
+.\" *************************** OPTIONS *********************************
+.SS OPTIONS
+.TP
+.I \-c
+.I \-\-create
+Create a checkpoint
+.TP
+.I \-d <path>
+.I \-\-databases=<path>
+Specifies the path of databases, delimited with ':', to search in.
+.I \-v
+.I \-\-verbose
+Verbose mode.
+.TP
+.I \-h
+.I \-\-help
+Display help.
+.TP
+.I \-V
+.I \-\-version
+Display version.
+.\" *********************** FILES ****************************
+.\".SH FILES
+.\".LP
+.\".PD .1v
+.\".TP 20
+.\".B /etc/rlocate/rlocate.conf
+.\"default configuration file
+.\".PD
+.\" *********************** SEE ALSO ****************************
+.SH "SEE ALSO"
+.BR "rlocate(1),"
+.BR "updatedb(1)"
+
+.\" *********************** VERSION ****************************
+.SH VERSION
+rlocate-checkpoint v0.5.6
+
+.\" *********************** AUTHOR ****************************
+.SH AUTHOR
+Rasto Levrinc - Copyright (c) 2004,2005
+
+.\" *********************** BUG REPORT ************************
+.SH BUG REPORT
+Report any bugs to Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+
+

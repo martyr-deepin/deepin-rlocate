@@ -1,0 +1,13 @@
+#!/bin/sh
+
+DBPATH=/var/lib/rlocate/
+RLOCATE=/usr/bin/rlocate
+PROC=/proc/rlocate
+
+if [ "$1" = remove -a -d $DBPATH ]
+then
+	rm -f $DBPATH/*
+        echo "activated:0" > $PROC
+fi
+
+#DEBHELPER#

@@ -1,0 +1,42 @@
+#!/bin/sh
+# Start/stop/restart rlocated
+# Written by James Caffrey
+
+# Start rlocated
+rlocated_start() {
+  if [ -x /usr/sbin/rlocated ]; then
+    echo "Starting rlocated: /usr/sbin/rlocated"
+    /usr/sbin/rlocated
+  fi
+}
+
+# Stop rlocated
+rlocated_stop() {
+  if [ -f /var/run/rlocated.pid ]; then
+    kill `cat /var/run/rlocated.pid`
+  else
+    killall rlocated
+  fi
+}
+
+# Restart rlocated
+rlocated_restart() {
+  rlocated_stop
+  sleep 1
+  rlocated_start
+}
+
+case "$1" in
+ 'start')
+    rlocated_start
+    ;;
+ 'stop')
+    rlocated_stop
+    ;;
+ 'restart')
+    rlocated_restart
+    ;;
+ *)
+    echo "usage `basename $0`: start|stop|restart"
+    ;;
+esac

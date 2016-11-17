@@ -1,0 +1,29 @@
+#!/sbin/runscript
+# Copyright 2004 Rasto Levrinc
+# Distributed under the terms of the GNU General Public License v2
+
+# depend() {
+#}
+opts="start stop reload"
+
+start() {
+	ebegin "Starting rlocate daemon"
+	start-stop-daemon --start --exec /usr/local/sbin/rlocated
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping rlocate daemon"
+	start-stop-daemon --stop --exec /usr/local/sbin/rlocated
+	eend $?
+}
+
+reload() {
+        if [ ! -f /var/run/rlocated.pid ]; then
+                eerror "rlocated isn't running"
+                return 1
+        fi
+        ebegin "Reloading configuration"
+        kill -HUP `cat /var/run/rlocated.pid` &>/dev/null
+        eend $?
+}

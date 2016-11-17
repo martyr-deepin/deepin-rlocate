@@ -1,0 +1,102 @@
+.TH RLOCATE 1 "August 15, 2007"
+.SH NAME
+rlocate \- Security Enhanced version of the GNU Locate, that is always 
+up-to-date 
+.SH SYNOPSIS
+rlocate [\-qi] [\-d <path>] [\-\-database=<path>] <search string>
+.br
+rlocate [\-i] [\-r <regexp>] [\-\-regexp=<regexp>]
+.br
+rlocate [\-qv] [\-o <file>] [\-\-output=<file>]
+rlocate [\-e <dir1,dir2,...>] [\-f <fstype1,...>] [\-c] <[\-U <path>] [\-u]>
+[\-I] [\-\-initdiffdb] [\-\-fast\-update] [\-\-full\-update]
+.br
+rlocate [\-Vh] [\-\-version] [\-\-help]
+.br
+.br
+ 
+.SH DESCRIPTION
+   rlocate provides a secure way to index and quickly search for files on your 
+system. This locate is always up-to-date with the help of rlocate kernel module.
+It uses incremental encoding just like GNU locate to compress its database to 
+make searching faster, but it will also ensure that users will not see files 
+they do not have access to. 
+.PP
+   This manual page documents the GNU version of
+.BR rlocate .
+.B rlocate
+Enables system users to search entire filesystems without
+displaying unauthorized files.
+.SS OPTIONS
+.TP
+.I \-u
+Create rlocate database starting at path /.
+.TP
+.I \-U <dir>
+Create rlocate database starting at path <dir>.
+.TP
+.I \-e <dir1,dir2,...>
+Exclude directories from the rlocate database.
+.TP
+.I \-f <fstype1,...>
+Exclude files on specific filesystems from the rlocate database.
+.TP
+.I \-c
+Parse '/etc/updatedb.conf' when updating the rlocate database.
+.TP
+.I \-i
+Does a case insensitive search.
+.TP
+.I \-q
+Quiet mode.  Error messages are suppressed.
+.TP
+.I \-n <num>
+Limit the amount of results shown to <num>.
+.TP
+.I \-r <regexp>
+.I \-\-regexp=<regexp>
+Search the database using a basic POSIX regular
+expression.
+.TP
+.I \-o <file>
+.I \-\-output=<file>
+Specifies the database to create.
+.TP
+.I \-d <path>
+.I \-\-database=<path>
+Specifies the path of databases, delimited with ':', to search in.
+.TP
+.I \-I
+.I \-\-initdiffdb
+Initializes the diff database if user database is created. If default database
+is created --initdiffdb is implied.
+.TP
+.I \-\-fast-update
+Force fast update of the default database.
+.TP
+.I \-\-full-update
+Force full update of the default database.
+.TP
+.I \-h
+.I \-\-help
+Display this help.
+.TP
+.I \-v
+.I \-\-verbose
+Verbose mode. Display files when creating database.
+.TP
+.I \-V
+.I \-\-version
+Display version.
+
+.SH VERSION
+rlocate v0.5.6
+
+.SH AUTHOR
+Rasto Levrinc - Copyright (c) 2004,2005
+
+.SH BUG REPORT
+Report any bugs to Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+
+.SH WEB
+http://rlocate.sourceforge.net/

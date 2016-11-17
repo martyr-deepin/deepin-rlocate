@@ -1,0 +1,31 @@
+#!/bin/bash
+
+CRONTAB=/etc/crontab
+
+if [ ! -e $CRONTAB ] ; then
+   echo "Could not locate $CRONTAB file"
+   exit 0
+fi
+
+grep "rlocate\|updatedb" $CRONTAB >/dev/null 2>&1
+
+if [ "$?" -eq "1" ] ; then
+
+   # Check if updatedb exists
+   if [ -x @UPDATEDB@ ] ; then
+   
+      # Check if a configuration file exists
+      if [ -f /etc/updatedb.conf ] ; then
+	 echo "0 6    * * *   root @UPDATEDB@" >>$CRONTAB
+      else
+         echo "0 6    * * *   root @UPDATEDB@ -f proc" >>$CRONTAB
+      fi      
+   elif [ -x /usr/bin/rlocate ] ; then
+       echo "0 6    * * *   root /usr/bin/rlocate -u -f proc" >>$CRONTAB
+   else
+       echo "Could not find a rlocate binary"
+   fi
+   
+else
+   echo "Cron entry already exists in $CRONTAB for rlocate"
+fi

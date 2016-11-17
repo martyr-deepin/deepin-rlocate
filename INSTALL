@@ -1,0 +1,48 @@
+INSTALL
+-------
+
+       Before you start, check that you have Linux kernel version 2.6, and
+       "Enable different security models" is set and "Default Linux Capabili-
+       ties" is either unset or set to 'M' in your kernel configuration in
+       "Security options" section. Disable also NSA SELinux. You can add
+       selinux=0 in your boot loader config file. In grub that would be -
+       /boot/grub/menu.lst.
+
+       First unpack the archive rlocate-0.5.6.tar.gz.
+
+       Enter the rlocate-0.5.6 directory and type:
+
+               ./configure
+               make
+               su -c "make install"
+
+       After that, load the rlocate kernel module as root, for example with:
+
+               modprobe rlocate
+
+       Or you can use some mechanism of your distribution to load the module
+       at boot time.
+
+       You need to start rlocated daemon as root too. You can use some of the
+       init scripts in contrib directory for your distribution.
+
+               /etc/init.d/rlocate start
+
+       Run
+               /etc/cron.daily/rlocate
+
+       as root or wait for cron job and you have locate that is always
+       up-to-date.
+
+       It will hopefully compile and it works. If it doesn't you can either
+       email me <e9526925@stud3.tuwien.ac.at> or make a patch and send it to
+       me.
+
+
+
+UNINSTALL
+---------
+
+       Enter the rlocate-0.5.6 directory and type:
+
+               su -c "make uninstall"

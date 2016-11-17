@@ -1,0 +1,41 @@
+                 rlocate v0.5.6 for Linux (2.6 Kernel)
+                        ------------------------
+                       Released August 15, 2007
+	   	    Copyright (c) 2004 Rasto Levrinc
+        	    Based on slocate by Kevin Lindsay
+
+     ABOUT
+     -------
+
+     rlocate is a locate that is always up-to-date. The database that original
+     locate uses, is usually updated only once a day and the newer files cannot 
+     be located right away. The behavior from rlocate is the same as slocate, 
+     but it also contains diff database that gets updated every time a file is 
+     created or directory is moved.
+
+     rlocate kernel module can be compiled only with 2.6.* kernels.
+
+     PORTS
+     -----
+     
+     rlocate will work only on Linux with version 2.6. 
+     
+     Listed below are the known and tested platforms that rlocate will work on.
+     
+     Linux  (libc6)
+
+     CREDITS
+     -------
+     Peter Robinson for lsm implementation
+     Kevin Lindsay for original slocate
+     Sven Luther for debian code from his unicorn package.
+     Anton Eartl for the idea and suggestions.
+
+     AUTHOR AND BUGS
+     ---------------
+
+     Author: Rasto Levrinc
+
+     Bug Reports: e9526925@stud3.tuwien.ac.at
+
+     HTTP:  http://www.sourceforge.net/projects/rlocate/

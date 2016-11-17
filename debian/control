@@ -1,0 +1,28 @@
+Source: rlocate
+Section: utils
+Priority: optional
+Maintainer: Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+Build-Depends: debhelper (>> 4.0.0), autoconf (>= 2.57-1), automake1.9
+Standards-Version: 3.6.1
+
+Package: rlocate
+Architecture: any
+Depends: ${shlibs:Depends}, adduser, dpkg (>= 1.8.1)
+Conflicts: dlocate (<< 0.5-0.1),slocate
+Suggests: anacron
+Description: allways up-to-date replacement of findutil's locate
+ This locate is modified slocate with database that is allways up-to-date.
+ It needs loaded rlocate kernel module in order to work. It can index all 
+ files on your system, but only files and directories which the invoking user 
+ has access to will be displayed.
+ .
+ Note: If your computer is not up 24/7 you should consider installing anacron
+ since the database is only updated once a night.
+
+Package: rlocate-source
+Architecture: all
+Depends: make, debhelper, kernel-package
+Description: source for rlocate kernel module
+ This package provides the rource code for the rlocate kernel module. 
+ This module checks changes to the file names in the filesystem and writes
+ them to the /dev/rlocate device file.

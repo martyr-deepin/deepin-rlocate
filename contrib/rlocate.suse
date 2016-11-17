@@ -1,0 +1,78 @@
+#! /bin/sh
+#
+# /etc/init.d/rlocate
+#
+### BEGIN INIT INFO
+# Provides:          rlocate
+# Required-Start:    $syslog $local_fs
+# Required-Stop:
+# Default-Start:     3 5
+# Default-Stop:      0 1 2 6
+# Short-Description: rlocate daemon
+# Description:       Start rlocate daemon
+#	rlocate provides a secure way to index and quickly search
+#	for  files on  your  system.  This  locate  is  always
+#	up-to-date with the help of rlocate kernel module.
+#	See rlocate(1), rlocated(1), rlocate-checkpoint(1), updatedb(1).
+### END INIT INFO
+
+RLOCATED=/usr/local/sbin/rlocated
+test -x $RLOCATED || { echo "$RLOCATED not installed"; 
+	if [ "$1" = "stop" ]; then exit 0;
+	else exit 5; fi; }
+
+. /etc/rc.status
+
+rc_reset
+
+case "$1" in
+    start)
+	echo -n "Starting rlocate "
+	modprobe rlocate
+	/sbin/startproc $RLOCATED
+	rc_status -v
+	;;
+    stop)
+	echo -n "Shutting down rlocate "
+	/sbin/killproc -TERM $RLOCATED
+	rmmod rlocate
+	rc_status -v
+	;;
+    try-restart|condrestart)
+	if test "$1" = "condrestart"; then
+		echo "${attn} Use try-restart ${done}(LSB)${attn} rather than condrestart ${warn}(RH)${norm}"
+	fi
+	$0 status
+	if test $? = 0; then
+		$0 restart
+	else
+		rc_reset	# Not running is not a failure.
+	fi
+	rc_status
+	;;
+    restart)
+	$0 stop
+	$0 start
+	rc_status
+	;;
+    force-reload)
+	echo -n "Reload service rlocate "
+	/sbin/killproc -HUP $RLOCATED
+	rc_status -v
+	;;
+    reload)
+	echo -n "Reload service rlocate "
+	/sbin/killproc -HUP $RLOCATED
+	rc_status -v
+	;;
+    status)
+	echo -n "Checking for service rlocate "
+	/sbin/checkproc $RLOCATED
+	rc_status -v
+	;;
+    *)
+	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload}"
+	exit 1
+	;;
+esac
+rc_exit

@@ -1,0 +1,188 @@
+#!/bin/sh
+
+set -e
+
+suffix=notrlocate
+#DEBUG=echo 
+
+#echo "DEBUG========================"
+#dpkg-divert --list rlocate
+#echo "============================="
+
+# check for diversions...
+divs=`dpkg-divert --list rlocate`
+if [ "$divs" != "" ]
+then
+	
+	# remove links
+	for i in /usr/bin/locate /usr/bin/updatedb
+	do
+		old_div=`echo $divs |grep $i || true`
+		# check for links
+		if [ -f $i -a "`readlink $i`" != "" ]
+		then
+			$DEBUG rm $i
+		else
+		# Handle special case where /usr/bin/locate is not a symlink
+		# to /usr/bin/rlocate but a diversion exists.
+
+			# We MUST have a $i.old or $i.$suffix.
+			if [ -f $i.old -o -f $i.$suffix ]
+			then
+				$DEBUG rm $i
+			fi
+		fi
+
+		if [ -f $i.old ]
+		then
+			$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert $i.old $i
+		fi
+		if [ -f $i.$suffix ]
+		then
+			$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert $i.$suffix $i
+		fi
+  	done
+
+	old_div=`echo $divs |grep usr/share/man/man1/updatedb || true`
+	if [ "$old_div" != "" ]
+	then
+		if [ -f /usr/share/man/man1/updatedb.1.gz ]
+		then
+			$DEBUG rm /usr/share/man/man1/updatedb.1.gz
+		fi
+		if [ -f /usr/share/man/man1/updatedb.$suffix.1.gz ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/share/man/man1/updatedb.$suffix.1.gz \
+			/usr/share/man/man1/updatedb.1.gz
+		fi
+		if [ -f /usr/share/man/man1/updatedb.1.gz.old ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/share/man/man1/updatedb.1.gz.old \
+			/usr/share/man/man1/updatedb.1.gz
+		fi
+	fi
+	old_div=`echo $divs |grep usr/man/man1/updatedb || true`
+	if [ "$old_div" != "" ]
+	then
+		if [ -f /usr/man/man1/updatedb.1.gz ]
+		then
+			$DEBUG rm /usr/man/man1/updatedb.1.gz
+		fi
+		#if [ -f /usr/man/man1/updatedb.1.gz.old ]
+		#then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/man/man1/updatedb.1.gz.old \
+			/usr/man/man1/updatedb.1.gz
+		#fi
+	fi
+
+	old_div=`echo $divs | grep usr/man/man1/locate || true`
+	if [ "$old_div" != "" ]
+	then
+		if [ -f /usr/man/man1/locate.1.gz ]
+		then
+			$DEBUG rm /usr/man/man1/locate.1.gz
+		fi
+		#if [ -f /usr/man/man1/locate.1.gz.old ]
+		#then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/man/man1/locate.1.gz.old \
+			/usr/man/man1/locate.1.gz
+		#fi
+	fi
+	old_div=`echo $divs | grep usr/share/man/man1/locate || true`
+	if [ "$old_div" != "" ]
+	then
+		if [ -f /usr/share/man/man1/locate.1.gz ]
+		then
+			$DEBUG rm /usr/share/man/man1/locate.1.gz
+		fi
+		if [ -f /usr/share/man/man1/locate.$suffix.1.gz ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/share/man/man1/locate.$suffix.1.gz \
+			/usr/share/man/man1/locate.1.gz
+		fi
+		if [ -f /usr/share/man/man1/locate.1.gz.old ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /usr/share/man/man1/locate.1.gz.old \
+			/usr/share/man/man1/locate.1.gz
+		fi
+	fi
+
+	old_div=`echo $divs | grep /etc/cron.daily/find || true`
+	if [ "$old_div" != "" -a ! -f /etc/cron.daily.find.$suffix ]
+	then
+		if [ -f /etc/cron.daily/find.old ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /etc/cron.daily/find.old \
+			/etc/cron.daily/find
+		fi
+		if [ -f /etc/cron.daily/find.$suffix ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /etc/cron.daily/find.$suffix \
+			/etc/cron.daily/find
+		fi
+		if [ ! -f /etc/cron.daily/find ]
+		then
+		# no idea how this happened
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /etc/cron.daily/find.$suffix \
+			/etc/cron.daily/find
+		fi
+	fi
+
+	# the cron.daily/find must be divered to /etc/<something> so that
+	# it is no longer run by cron.
+	old_div=`echo $divs | grep /etc/cron.daily.find.$suffix || true`
+	if [ "$old_div" != "" ]
+	then
+		if [ -f /etc/cron.daily.find.$suffix ]
+		then
+		$DEBUG dpkg-divert --package rlocate --remove --rename \
+			--divert /etc/cron.daily.find.$suffix \
+			/etc/cron.daily/find
+		fi
+	fi
+	
+fi
+
+# all diverts should be toast
+if [ "`dpkg-divert --list rlocate`" != "" ]
+then
+	echo "==============================================="
+	echo "===Error. The following diversions still exist:"
+	dpkg-divert --list rlocate
+	echo "==============================================="
+	exit 1
+fi
+
+#if [ install = "$1" ]; then
+	$DEBUG dpkg-divert --package rlocate --add --rename \
+		--divert /usr/bin/locate.$suffix \
+			/usr/bin/locate
+	$DEBUG dpkg-divert --package rlocate --add --rename \
+		--divert /usr/bin/updatedb.$suffix \
+			/usr/bin/updatedb
+	$DEBUG dpkg-divert --package rlocate --add --rename \
+		--divert /usr/share/man/man1/locate.$suffix.1.gz \
+			/usr/share/man/man1/locate.1.gz
+	$DEBUG dpkg-divert --package rlocate --add --rename \
+		--divert /usr/share/man/man1/updatedb.$suffix.1.gz \
+			/usr/share/man/man1/updatedb.1.gz
+	# The cron script must be moved out of cron.daily so that it is
+	# no longer run.
+	$DEBUG dpkg-divert --package rlocate --add --rename \
+		--divert /etc/cron.daily/find.$suffix \
+			/etc/cron.daily/find
+#fi
+
+
+#DEBHELPER#

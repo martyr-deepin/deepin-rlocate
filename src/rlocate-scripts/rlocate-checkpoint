@@ -1,0 +1,237 @@
+#!/usr/bin/perl
+# -*- perl -*-
+# src/rlocate-scripts/rlocate-checkpoint.  Generated from rlocate-checkpoint.in by configure.
+
+# rlocate-checkpoint - shows file names, that were added to the filesystem 
+# since the last updatedb or after # checkpoint, if a checkpoint was created 
+# with --create option.
+#
+# Copyright (C) 2005 Rasto Levrinc 
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+# Written by Rasto Levrinc <e9526925@stud3.tuwien.ac.at>
+
+eval 'exec /usr/bin/perl -S $0 ${1+"$@"}' if 0;
+
+use strict;
+use warnings;
+use File::Spec;
+use Getopt::Long;
+
+our $VERSION = '0.5.6';
+our $PROC_FILE = '/proc/rlocate';
+check_module();
+
+$ENV{PATH}  = '/bin:/usr/bin';
+$ENV{SHELL} = '/bin/sh' if exists $ENV{SHELL};
+delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};
+
+my $HOME = $ENV{HOME};
+if ($HOME =~ /^([-\@\w.\/]+)$/) {
+        $HOME = $1;                     # $HOME now untainted
+} else {
+        print_output("FATAL", "Bad data in '$HOME'");
+}
+
+our $RLOCATED_CMD = "@RLOCATED_CMD@";
+our $RLOCATE_DB   = "@RLOCATE_DB@"; # database name
+if ($ENV{LOCATE_PATH}) {
+        $RLOCATE_DB.=":" if $RLOCATE_DB;
+        $RLOCATE_DB.= $ENV{LOCATE_PATH};
+}
+
+our $CHECKPOINT_FILE = "$HOME/rlocate-checkpoint------";
+our $VERBOSE;
+my ($create, $database, $help, $version);
+my $results = GetOptions(
+                         'create|c'  => \$create,
+                         'database|d=s' => \$database,
+                         'help|h'    => \$help,
+                         'verbose|v' => \$VERBOSE,
+                         'version|V' => \$version,
+                        );
+exit 1 if !$results;
+
+$RLOCATE_DB = $database if $database;
+
+if ($help) {
+        help();
+        exit 0;
+} elsif ($version) {
+        version();
+        exit 0;
+} elsif ($create) {
+        create();
+} else {
+        system($RLOCATED_CMD, "--noloop") if is_root();
+        for (split /:/, $RLOCATE_DB) {
+                show("$_.diff");
+        }
+
+}
+
+#
+# check_module() 
+#
+sub check_module {
+        print_output("FATAL", "rlocate module is not loaded.") if !-e $PROC_FILE;
+}
+
+#
+# help() display help
+#
+sub help {
+        print<<HELP;
+rlocate-checkpoint $VERSION 
+
+Usage: $0 [OPTION]
+
+With no OPTION: show file names, that were added to the filesystem  
+                since the last updatedb or after checkpoint, if a checkpoint 
+                was created with --create option.
+
+  -c --create          - Create a check point.
+  -d --database=\<path\> - Specifies the path of databases, delimited with ':', 
+                         to search in.
+  -v --verbose         - Verbose mode.
+  -h --help            - Display this help and exit.
+  -V --version         - Display version.
+
+Report bugs to <e9526925\@stud3.tuwien.ac.at>
+
+HELP
+}
+
+#
+# version() display version
+#
+sub version {
+        print "rlocate-checkpoint $VERSION\n";
+}
+
+#
+# print_output() print output. The type can be WARN, INFO, or FATAL. INFO
+# messages will be printed only if --verbose option was specified.
+#
+sub print_output {
+        my $type = shift;
+        my $msg  = shift;
+        if ($type ne "INFO" || $VERBOSE) {
+                if ($type eq "NORMAL") {
+                        print "$msg\n";
+                } else {
+                        print "$type: $msg\n";
+                }
+        }
+        exit 1 if $type eq "FATAL";
+}
+
+#
+# create() create checkpoint
+#
+sub create {
+        my ($sec, $min, $hour, $mday, $mon, $year) = (localtime)[0..5]; 
+        my $datestring=($year+1900).
+                       sprintf("%02s", $mon+1).
+                       sprintf("%02s", $mday).
+                       sprintf("%02s", $hour).
+                       sprintf("%02s", $min).
+                       sprintf("%02s", $sec);
+        print_output("INFO", "Creating checkpoint $datestring.");
+        open CF, ">$CHECKPOINT_FILE$datestring" or print_output("FATAL",
+                                "cannot create $CHECKPOINT_FILE$datestring");
+        close CF;
+        unlink "$CHECKPOINT_FILE$datestring";
+}
+
+#
+# is_root() return 1 if the program is run by root, otherwise 0.
+#
+sub is_root {
+        return 1 if $< == 0;
+        return 0;
+}
+
+#
+# check_path_access() check to make sure the entire path is readable.
+# return 1 if it is, otherwise 0.
+#
+sub check_path_access {
+        my $path = shift || return 0;
+        chomp $path;
+        return 0 if !-e $path;
+        my $path_part = "";
+        my @dirs = File::Spec->splitdir ($path);
+        pop @dirs;
+        for (@dirs) {
+                $path_part .= "$_/";
+                return 0 if !-R $path_part;
+        }
+        return 1;
+}
+
+
+#
+# show() show files from last checkpoint
+#
+sub show {
+        my $diff_database = shift; 
+        print_output("INFO", "checking database: $diff_database");
+        if (!open DB, $diff_database) {
+                print_output("WARN", "can't open $diff_database: $!");
+                return;
+        }
+        my $checkpoint_found = 0;
+        my @added_files;
+        my %added_files;
+        my $cfile = $CHECKPOINT_FILE;
+        $cfile =~ s!/!!;
+	local $/ = "\0";
+        while(<DB>) {
+		chomp;
+                if (/$cfile/) {
+                        my ($chkp) = /-(\d+)/;
+                        print_output("INFO", "Found checkpoint $chkp.");
+                        $checkpoint_found = 1;
+                        @added_files = ();
+                        %added_files = ();
+
+                } else {
+                        push @added_files, "$_";
+                        $added_files{$_}++;
+                }
+        }
+        close DB;
+        if (!$checkpoint_found) {
+                print_output("NORMAL", 
+                             "No checkpoints found. Printing all files since ".
+                             "last updatedb.");
+        }
+        my $added = 0;
+        for (@added_files) {
+                if ($added_files{$_}>1) { # print only the last one
+                        $added_files{$_}--;
+                } else {
+                        if (check_path_access("/$_")) {
+                                print "ADDED FILES/DIRECTORIES:\n" if !$added;
+                                $added = 1;
+                                print "\t/$_\n";
+                        }
+                }
+        }
+}
+
