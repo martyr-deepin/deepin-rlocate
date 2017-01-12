@@ -506,7 +506,7 @@ static void parse_proc(struct proc_data *pdata)
             write_lock(&proc_lock);
             if (ACTIVATED_ARG == '1' 
                 && strcmp(EXCLUDE_DIR_ARG, pdata->pbuffer)) 
-                UPDATEDB_ARG = 0; /* full updatedb if eclude dir
+                UPDATEDB_ARG = 0; /* full updatedb if exclude dir
                                      has changed */
             strcpy(EXCLUDE_DIR_ARG, pdata->pbuffer);
             write_unlock(&proc_lock);

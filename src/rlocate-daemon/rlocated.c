@@ -1,4 +1,4 @@
-/* 
+/*
  * rlocated.c
  *
  * Copyright (C) 2004 Rasto Levrinc.
@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- */ 
+ */
 
 /* rlocated is a daemon that reads rlocate dev file and copies it to the
  * rlocate db file every INTERVAL seconds.
@@ -71,11 +71,13 @@ static char *RLOCATEDEV      = DEVDIR"/rlocate";
 static char *RLOCATEPROC     = PROCDIR"/rlocate";
 static char *RLOCATE_DIFF_DB = NULL;
 
+#define MB  (1024 * 1024);
 
 static char *PidFile = _PATH_VARRUN "rlocated.pid";
 static int  NO_DAEMON = 0; /* don't run in daemon mode */
 static int  NO_LOOP   = 0; /* don't run in loop */
 static int  INTERVAL  = 2; /* read every 2 seconds */
+static int  THRESHOLD = 200 * MB; /* default diff size threshold is 200MB */
 static FILE *fd_dev;        /* file handle for dev file */
 static FILE *fd_db;         /* file handle for db file  */
 static int  fd_proc;       /* file handle for proc file  */
@@ -84,6 +86,15 @@ static int  fd_cfg;        /* file handle for module config file  */
 static char buf[BUFSIZ];   /* buffer for copy from dev file to db file */
 static int RELOAD_CONFIG;      /* if set to 1, the config will be reloaded */
 static char *PROGNAME;
+
+long long get_file_size(const char* path) {
+    struct stat buf;
+    if (stat(path, &buf) == 0) {
+        return buf.st_size;
+    }
+    return 0;
+}
+
 
 /*
  * print_log()
@@ -156,11 +167,11 @@ void reload_config(sig)
         RELOAD_CONFIG = 1;
         return;
 }
-/* 
- * Usage 
+/*
+ * Usage
  */
 
-void usage() 
+void usage()
 {
         printf("%s\n"
                "Copyright (c) 2004 Rasto Levrinc\n\n"
@@ -170,6 +181,7 @@ void usage()
                "   -l --noloop          - Don't run in loop.\n"
                "   -i <seconds>\n"
                "   --interval=<seconds> - Refresh every n seconds.\n"
+               "   --threshold=<MB>     - the diff db threshold size in MB.\n"
                "   -o <file>\n"
                "   --output=<file>      - Specifies the rlocate database.\n"
                "   -h --help            - Display this help.\n"
@@ -177,7 +189,7 @@ void usage()
                "\n",
                RL_VERSION, PROGNAME);
                exit(0);
-} 
+}
 
 /*
  * cfg_to_proc() is used, so that no error is reported twice. After
@@ -188,7 +200,7 @@ int cfg_to_proc(const int type)
         static int last_error = 0;
         static int error = 0;
         error++;
-        if (type == 0) 
+        if (type == 0)
                 return 0;
         else if (type == -1) {
                 error = 0;
@@ -196,13 +208,13 @@ int cfg_to_proc(const int type)
                 return 0;
         }
         if (fd_cfg>0) {
-                if (close(fd_cfg) < 0) 
-                        print_log(LOG_WARNING, "cannot close %s: %s", 
+                if (close(fd_cfg) < 0)
+                        print_log(LOG_WARNING, "cannot close %s: %s",
                                   MODULE_CFG, strerror(errno) );
         }
         if (fd_proc>0) {
-                if (close(fd_proc) < 0) 
-                        print_log(LOG_WARNING, "cannot close %s: %s", 
+                if (close(fd_proc) < 0)
+                        print_log(LOG_WARNING, "cannot close %s: %s",
                                   RLOCATEPROC, strerror(errno) );
         }
         if ( last_error == error) {
@@ -227,16 +239,16 @@ void cfg_to_proc_ok(void)
 }
 
 void cfg_to_proc_done(void)
-        
+
 {
         cfg_to_proc(-1);
 }
 
 /*
- * init_module() copies content from module config file to proc file and 
- * activate module. If something of that fails retry every minute. 
+ * init_module() copies content from module config file to proc file and
+ * activate module. If something of that fails retry every minute.
  */
-void init_module(void) 
+void init_module(void)
 {
         struct flock fl = { F_WRLCK, SEEK_SET, 0, 0, 0 };
         auto ssize_t n;
@@ -244,37 +256,37 @@ void init_module(void)
         while (1) {
                 if ( (fd_cfg = open(MODULE_CFG, O_RDONLY)) < 0 ) {
                         if (cfg_to_proc_error())
-                                print_log(LOG_WARNING, 
+                                print_log(LOG_WARNING,
                                        "updatedb must be run first, waiting...");
-                        continue; 
+                        continue;
                 } else
                         cfg_to_proc_ok();
-                        
+
                 if ( (fd_proc = open(RLOCATEPROC, O_WRONLY, 0)) < 0 ) {
-                        if (cfg_to_proc_error()) 
-                                print_log(LOG_WARNING, 
+                        if (cfg_to_proc_error())
+                                print_log(LOG_WARNING,
                                       "rlocate module is not loaded, waiting...");
-                         
+
                         continue;
-                } else 
+                } else
                         cfg_to_proc_ok();
 
                 fl.l_type = F_RDLCK;
                 if (fcntl(fd_cfg, F_SETLKW, &fl) < 0) {
                         if (cfg_to_proc_error())
-                                print_log(LOG_WARNING, 
-                                          "fcntl lock error: %s", 
+                                print_log(LOG_WARNING,
+                                          "fcntl lock error: %s",
                                           strerror(errno) );
                         continue;
-                } else 
+                } else
                         cfg_to_proc_ok();
-                
+
                 /* copy module cfg file to proc file. */
                 while((n = read(fd_cfg, buf, BUFSIZ)) !=0 ) {
                         if (write(fd_proc, buf, n) != n) {
                                 if (cfg_to_proc_error())
-                                        print_log(LOG_WARNING, 
-                                                  "write error %s: %s", 
+                                        print_log(LOG_WARNING,
+                                                  "write error %s: %s",
                                                   RLOCATEPROC, strerror(errno) );
                         } else {
                                 cfg_to_proc_ok();
@@ -283,7 +295,7 @@ void init_module(void)
                 /* activate module */
                 if (write(fd_proc, "activated:1", 12) != 12) {
                         if (cfg_to_proc_error())
-                                print_log(LOG_WARNING, "write error %s: %s", 
+                                print_log(LOG_WARNING, "write error %s: %s",
                                           RLOCATEPROC, strerror(errno) );
                         continue;
                 } else
@@ -294,14 +306,14 @@ void init_module(void)
         /* release lock */
         fl.l_type = F_UNLCK;
         if (fcntl(fd_cfg, F_SETLKW, &fl) < 0)
-                print_log(LOG_WARNING, "fcntl unlock error: %s", 
+                print_log(LOG_WARNING, "fcntl unlock error: %s",
                           strerror(errno) );
 
-        if (close(fd_cfg) < 0) 
+        if (close(fd_cfg) < 0)
                 print_log(LOG_WARNING, "cannot close %s: %s", MODULE_CFG,
                                                               strerror(errno) );
         if (close(fd_proc) < 0)
-                print_log(LOG_WARNING, "cannot close %s: %s", RLOCATEPROC, 
+                print_log(LOG_WARNING, "cannot close %s: %s", RLOCATEPROC,
                                                               strerror(errno) );
 }
 
@@ -310,7 +322,7 @@ void init_module(void)
  */
 char *get_diff_db_name(const char *dbname)
 {
-        int db_len = strlen(dbname);      
+        int db_len = strlen(dbname);
         char *diff_dbname = xmalloc( db_len + 6 );
         strcpy(diff_dbname, dbname);
         strcpy(diff_dbname + db_len, ".diff");
@@ -320,14 +332,14 @@ char *get_diff_db_name(const char *dbname)
 /*
  * destroy_exclude_dir()
  */
-void destroy_exclude_dir() 
+void destroy_exclude_dir()
 {
 	int i;
 	if (EXCLUDE_DIR == NULL)
 		return;
 	for (i = 0; EXCLUDE_DIR[i]; i++)
 		free(EXCLUDE_DIR[i]);
-	
+
 	free(EXCLUDE_DIR);
 	EXCLUDE_DIR = NULL;
 }
@@ -335,7 +347,7 @@ void destroy_exclude_dir()
 /*
  * create_exclude_dir()
  */
-void create_exclude_dir(char *exclude_dir_string) 
+void create_exclude_dir(char *exclude_dir_string)
 {
 	char *startptr = exclude_dir_string;
 	char *endptr;
@@ -345,7 +357,7 @@ void create_exclude_dir(char *exclude_dir_string)
 	int i = 0;
         if (EXCLUDE_DIR != NULL)
         	destroy_exclude_dir();
-	if (exclude_dir_string == NULL || *exclude_dir_string == '\0') 
+	if (exclude_dir_string == NULL || *exclude_dir_string == '\0')
 		return;
 	// check exclude_dir_string
 	if (*exclude_dir_string == '*' && exclude_dir_string[strlen(exclude_dir_string) - 1] == '*') {
@@ -363,7 +375,7 @@ void create_exclude_dir(char *exclude_dir_string)
 		err = 1;
 	}
 	if (err) {
-		print_log(LOG_WARNING, 
+		print_log(LOG_WARNING,
 			  "get_exclude_dir: cannot parse exclude dir\n");
 		return;
 	}
@@ -371,7 +383,7 @@ void create_exclude_dir(char *exclude_dir_string)
 	startptr = exclude_dir_string;
 	EXCLUDE_DIR = (char **)malloc(sizeof(char *) * (len + 1));
 	while (1) {
-		for (endptr = startptr + 1; *endptr != '*' && *endptr != '\0'; 
+		for (endptr = startptr + 1; *endptr != '*' && *endptr != '\0';
 		     endptr++);
 		*endptr = '\0';
 		/* add '/' to the exclude dir */
@@ -388,7 +400,7 @@ void create_exclude_dir(char *exclude_dir_string)
 }
 
 /*
- * parse_proc() parse /proc/rlocate and set RLOCATE_DIFF_DB, MODULE_VERSION, 
+ * parse_proc() parse /proc/rlocate and set RLOCATE_DIFF_DB, MODULE_VERSION,
  * STARTING_PATH and EXCLUDE_DIR global variables.
  */
 void parse_proc()
@@ -439,25 +451,25 @@ void parse_proc()
 /* Check to see if a path matches an excluded one. */
 int match_exclude(char *path) {
 	int i;
-        int starting_path_len; 
-        int path_len = strlen(path); 
+        int starting_path_len;
+        int path_len = strlen(path);
 	int excl_dir_len;
-  	
+
 	/* check path against STARTING_PATH_ARG */
         if (STARTING_PATH != NULL && *STARTING_PATH != '\0') {
 		starting_path_len = strlen(STARTING_PATH);
-                if (strncmp(STARTING_PATH, path, 
-			    (starting_path_len - 1 == path_len ? 
+                if (strncmp(STARTING_PATH, path,
+			    (starting_path_len - 1 == path_len ?
 			     path_len : starting_path_len)))
                		return 1; // this path is not in starting path
 	}
-	if (!EXCLUDE_DIR) 
+	if (!EXCLUDE_DIR)
 		return 1;
 	for (i = 0; EXCLUDE_DIR[i]; i++) {
 		excl_dir_len = strlen(EXCLUDE_DIR[i]);
-		if (strncmp(path, EXCLUDE_DIR[i], 
-			    (excl_dir_len - 1 == path_len ? 
-			     path_len : excl_dir_len)) == 0) 
+		if (strncmp(path, EXCLUDE_DIR[i],
+			    (excl_dir_len - 1 == path_len ?
+			     path_len : excl_dir_len)) == 0)
 			return 1;
 	}
 
@@ -465,7 +477,7 @@ int match_exclude(char *path) {
 }
 
 /*
- * traverse_dir() traverse directory 'dirstr' and put the paths, that match 
+ * traverse_dir() traverse directory 'dirstr' and put the paths, that match
  * the pattern, to the tree.
  */
 void traverse_dir(char *dirstr)
@@ -480,27 +492,27 @@ void traverse_dir(char *dirstr)
         dir_array = (char **)xmalloc(sizeof(char **)*2);
         *dir_array = dirstr;
         dir_array[1] = NULL;
-        dir = fts_open(dir_array, FTS_PHYSICAL|FTS_NOSTAT, NULL);  
+        dir = fts_open(dir_array, FTS_PHYSICAL|FTS_NOSTAT, NULL);
         for (i = 0; i > -1; i += 1) {
                 file = fts_read(dir);
-                
+
                 if (!file)
                         break;
-                
+
                 if (file->fts_info != FTS_DP && file->fts_info != FTS_NS) {
-                        if ((EXCLUDE_DIR != NULL && 
-                             !match_exclude(file->fts_path)) || 
+                        if ((EXCLUDE_DIR != NULL &&
+                             !match_exclude(file->fts_path)) ||
                             EXCLUDE_DIR == NULL) {
                                 // write to the db without leading '/', with
                                 // '\n' at the end of the line.
                                 strcpy(dirstr, file->fts_path + 1);
                                 dirstr_len = strlen(dirstr);
                                 if (fwrite(dirstr, strlen(dirstr) + 1, sizeof(char), fd_db) == EOF)
-                                	print_log(LOG_WARNING, 
-                                               	"write error %s: %s", 
-                                                RLOCATE_DIFF_DB, 
+                                	print_log(LOG_WARNING,
+                                               	"write error %s: %s",
+                                                RLOCATE_DIFF_DB,
                                                 strerror(errno) );
-                        } else 
+                        } else
                                 fts_set(dir,file,FTS_SKIP);
                 }
         }
@@ -510,14 +522,14 @@ void traverse_dir(char *dirstr)
 
 
 
-/* 
- * update_lvm_array() 
+/*
+ * update_lvm_array()
  *
  * update LVM_MINOR_TO_DEV array with info from lvdisplay output
  */
 static void update_lvm_array() {
 	FILE *fp;
-	char string[PATH_MAX]; 
+	char string[PATH_MAX];
 	char *p, *pp;
 	int kernel_minor;
 	fp = popen("lvdisplay -C --separator - --noheadings -o lv_kernel_minor,vg_name,lv_name 2>/dev/null", "r");
@@ -545,8 +557,8 @@ static void update_lvm_array() {
 	}
 }
 
-/* 
- * get_lvm_minor() 
+/*
+ * get_lvm_minor()
  *
  * get lvm kernel minor number from device name
  */
@@ -555,13 +567,13 @@ static int get_lvm_minor(char *dev_file) {
 	for (i = 0; i < LVM_MINOR_TO_DEV_LEN; i++) {
 		if (LVM_MINOR_TO_DEV[i] == NULL)
 			continue;
-		if (!strcmp(LVM_MINOR_TO_DEV[i], dev_file)) 
+		if (!strcmp(LVM_MINOR_TO_DEV[i], dev_file))
 			return i;
 	}
 	return -1;
 }
-/* 
- * rlocate_create_mount_hash() 
+/*
+ * rlocate_create_mount_hash()
  *
  * create DEV_TO_MOUNTP hash.
  */
@@ -571,13 +583,13 @@ void rlocate_create_mount_hash() {
 		LVM_MINOR_TO_DEV[i] = NULL;
 	LVM_MINOR_TO_DEV_LEN = 0;
         memset( &DEV_TO_MOUNTP, 0, sizeof(DEV_TO_MOUNTP));
-        if (hcreate_r(200, &DEV_TO_MOUNTP) == 0) 
+        if (hcreate_r(200, &DEV_TO_MOUNTP) == 0)
                 print_log(LOG_WARNING, "rlocate_create_mount_hash(): "
 				       "hcreate_r: cannot create dev hash\n");
 }
 
-/* 
- * rlocate_update_mount_hash() 
+/*
+ * rlocate_update_mount_hash()
  *
  * update DEV_TO_MOUNTP hash.
  */
@@ -612,20 +624,20 @@ void rlocate_update_mount_hash() {
 				if (!strncmp(dev_file, "mapper/", 7)) {
 					kernel_minor = get_lvm_minor(dev_file + 7);
 					sprintf(dev_file , "dm-%i", kernel_minor);
-					
+
 				}
                                 /* put dev_file and mount point in the hash */
                                 mount_entry.key  = dev_file;
-                                if( hsearch_r(mount_entry, FIND, &ret_entry, 
+                                if( hsearch_r(mount_entry, FIND, &ret_entry,
                                               &DEV_TO_MOUNTP) == 0) {
                                 	mount_entry.data = mountpoint;
-                                	if( hsearch_r(mount_entry, ENTER, 
-					    	      &ret_entry, 
+                                	if( hsearch_r(mount_entry, ENTER,
+					    	      &ret_entry,
                                              	      &DEV_TO_MOUNTP) == 0) {
-                                        	print_log(LOG_WARNING, 
+                                        	print_log(LOG_WARNING,
 						     "hsearch: hash is full\n");
 						break;
-					} 
+					}
                                 	/* add mount point to the list */
                                 	ml = (Mount_list*)xmalloc(sizeof(Mount_list));
 					if (!ml)
@@ -639,7 +651,7 @@ void rlocate_update_mount_hash() {
 					}
 					mount_list_head = ml;
                                 } else {
-					if ( strcmp(ret_entry->data, 
+					if ( strcmp(ret_entry->data,
 						    mountpoint) ) {
 						free(ret_entry->data);
                                 		ret_entry->data = mountpoint;
@@ -650,14 +662,14 @@ void rlocate_update_mount_hash() {
                         }
                 }
                 if (fclose(fd) <0)
-                        print_log(LOG_WARNING, 
+                        print_log(LOG_WARNING,
 				  "rlocate_update_mount_hash(): fclose:"
-				  " can't close /etc/mtab: %s\n", 
+				  " can't close /etc/mtab: %s\n",
 				  strerror(errno) );
         }
 
 }
-/* 
+/*
  * destroy_lvm_array()
  */
 void destroy_lvm_array() {
@@ -670,7 +682,7 @@ void destroy_lvm_array() {
 	}
 }
 
-/* 
+/*
  * rlocate_destroy_mount_hash()
  */
 void rlocate_destroy_mount_hash() {
@@ -689,7 +701,7 @@ void rlocate_destroy_mount_hash() {
 		if (ml == mount_list_head) {
 			free(ml);
 			break;
-		} 
+		}
 		ml_p = ml;
 		ml = ml->next;
 		free(ml_p);
@@ -698,8 +710,8 @@ void rlocate_destroy_mount_hash() {
 	destroy_lvm_array();
 }
 
-/* 
- * rlocate_get_mountpoint() 
+/*
+ * rlocate_get_mountpoint()
  *
  * convert directory path with dev_file passed in the buffer string.
  */
@@ -710,7 +722,7 @@ void rlocate_get_mountpoint(char *buffer) {
         char *p;
 
         p = index(buffer, ':');
-	if (!p) 
+	if (!p)
 		p = buffer + strlen(buffer);
 	dirstr_part = strdup(p + 1);
 	if (!dirstr_part) {
@@ -728,7 +740,7 @@ void rlocate_get_mountpoint(char *buffer) {
 		return;
         }
         mountpoint = (char *)me->data;
-	if (!strcmp(mountpoint, "")) 
+	if (!strcmp(mountpoint, ""))
 		strcpy(buffer, dirstr_part + 1);
 	else {
         	strcpy(buffer, mountpoint);
@@ -740,7 +752,7 @@ void rlocate_get_mountpoint(char *buffer) {
 /*
  * main
  */
-int main(int argc, char **argv) 
+int main(int argc, char **argv)
 {
         int ch; /* option character */
         char *p;
@@ -777,7 +789,7 @@ int main(int argc, char **argv)
         while (1) {
                 this_option_optind = optind ? optind : 1;
                 option_index = 0;
-                ch = getopt_long (argc, argv, "hVno:i:l",
+                ch = getopt_long (argc, argv, "hVno:i:t:l",
                                   long_options, &option_index);
                 if (ch == -1)
                         break;
@@ -788,7 +800,7 @@ int main(int argc, char **argv)
                         case 'n':       /* don't run in daemon mode */
                                 NO_DAEMON++;
                                 break;
-                        case 'l':       
+                        case 'l':
                                 NO_LOOP++;
                                 NO_DAEMON++;
                                 break;
@@ -807,6 +819,12 @@ int main(int argc, char **argv)
                                         INTERVAL = atoi(optarg);
                                 }
                                 break;
+                        case 't':
+                                if (optarg && atoi(optarg)>0) {
+                                        THRESHOLD = atoi(optarg) * MB;
+                                }
+                                break;
+
                         default:
                                 return(1);
                                 break;
@@ -840,7 +858,7 @@ int main(int argc, char **argv)
                                         close(fd);
                                 }
                                 setsid();
-                        } else 
+                        } else
                                 exit(0);
                 } else {
                         print_log(LOG_ERR, "already running, exiting...");
@@ -885,7 +903,7 @@ int main(int argc, char **argv)
                         // compare daemon and module versions
                         if (strcmp(MODULE_VERSION, VERSION)) {
                                 print_log(LOG_WARNING, "module version (%s) "
-                                          "doesn't match daemon version (%s)", 
+                                          "doesn't match daemon version (%s)",
                                           MODULE_VERSION, VERSION);
                         }
                         change_permissions = 1;
@@ -893,10 +911,14 @@ int main(int argc, char **argv)
 
                 if (!NO_LOOP)
                         sleep(INTERVAL);
+                if (get_file_size(RLOCATE_DIFF_DB) > THRESHOLD) {
+                    system("/usr/bin/updatedb");
+                }
+
                 /* open db file */
                 if ( (fd_db = fopen(RLOCATE_DIFF_DB, "a")) == NULL ) {
-                        print_log(LOG_WARNING, 
-				  "cannot open %s for writing: %s", 
+                        print_log(LOG_WARNING,
+				  "cannot open %s for writing: %s",
                                   RLOCATE_DIFF_DB, strerror(errno));
                         if (NO_LOOP) clean_up();
                         continue;
@@ -911,7 +933,7 @@ int main(int argc, char **argv)
                 fl.l_type = F_WRLCK;
                 fd_db_no = fileno(fd_db);
                 if (fcntl(fd_db_no, F_SETLKW, &fl) < 0) {
-                        print_log(LOG_WARNING, "fcntl lock error: %s", 
+                        print_log(LOG_WARNING, "fcntl lock error: %s",
                                   strerror(errno) );
                         RELOAD_CONFIG = 1;
                         if (NO_LOOP) clean_up();
@@ -920,15 +942,15 @@ int main(int argc, char **argv)
 
                 /* open dev file */
                 if ( (fd_dev = fopen(RLOCATEDEV, "r")) == NULL ) {
-                        print_log(LOG_WARNING, "cannot open %s: %s", 
+                        print_log(LOG_WARNING, "cannot open %s: %s",
                                   RLOCATEDEV, strerror(errno));
                         no_module = 1;
                         if (NO_LOOP) clean_up();
                         continue;
                 }
                 /* copy all lines from dev file to the diff database. The
-                 * lines that start with 'm' are directories, that were 
-                 * moved, so they are traversed and written to the diff 
+                 * lines that start with 'm' are directories, that were
+                 * moved, so they are traversed and written to the diff
                  * database.
                  */
                 while ( (read = getdelim(&buffer, &len, '\0', fd_dev)) != -1 ) {
@@ -940,18 +962,18 @@ int main(int argc, char **argv)
 			rlocate_get_mountpoint(buffer + 1);
 			mode = *buffer;
 			*buffer = '/';
-                        if ((EXCLUDE_DIR != NULL && 
-                             !match_exclude(buffer)) || 
+                        if ((EXCLUDE_DIR != NULL &&
+                             !match_exclude(buffer)) ||
                             EXCLUDE_DIR == NULL) {
-                        	if (mode == 'm')  
+                        	if (mode == 'm')
                                 	traverse_dir(buffer);
 				else if (*(buffer + 1) != '\0') {
                                 /* write without leading '/'. Don't write if
 				 * partition was unmounted. */
                                 	if (fwrite(buffer + 1, strlen(buffer + 1) + 1, sizeof(char), fd_db) == EOF)
-                                       		print_log(LOG_WARNING, 
-                                                 	"write error %s: %s", 
-                                                 	RLOCATE_DIFF_DB, 
+                                       		print_log(LOG_WARNING,
+                                                 	"write error %s: %s",
+                                                 	RLOCATE_DIFF_DB,
                                                   	strerror(errno) );
 				}
                         }
@@ -960,21 +982,21 @@ int main(int argc, char **argv)
 			free(buffer);
 		buffer = 0;
                 if (ferror(fd_dev))
-                        print_log(LOG_WARNING, "read error %s: %s", 
+                        print_log(LOG_WARNING, "read error %s: %s",
                                   RLOCATEDEV, strerror(errno) );
 
 
                 if (fclose(fd_dev) < 0)
-                        print_log(LOG_WARNING, "cannot close %s: %s", 
+                        print_log(LOG_WARNING, "cannot close %s: %s",
                                   RLOCATEDEV, strerror(errno) );
                 /* release lock */
                 fl.l_type = F_UNLCK;
 
                 if (fcntl(fd_db_no, F_SETLKW, &fl) < 0)
-                        print_log(LOG_WARNING, "fcntl unlock error: %s", 
+                        print_log(LOG_WARNING, "fcntl unlock error: %s",
                                   strerror(errno) );
-                if (fclose(fd_db) < 0) 
-                        print_log(LOG_WARNING, "cannot close %s: %s", 
+                if (fclose(fd_db) < 0)
+                        print_log(LOG_WARNING, "cannot close %s: %s",
                                   RLOCATE_DIFF_DB, strerror(errno) );
                 if (NO_LOOP) break;
 
